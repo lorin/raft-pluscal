@@ -9,7 +9,7 @@ CONSTANT NoVal
 
 variables
     storeIsIdle = TRUE;
-    storeData = [x \in Variables \-> NoVal];
+    storeData = [x \in Variables |-> NoVal];
     request;
 
 
