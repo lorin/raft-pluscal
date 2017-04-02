@@ -9,59 +9,50 @@ CONSTANT NoVal
 
 variables
     storeIsIdle = TRUE,
-    responseIsReady = FALSE,
     storeData = [x \in Variables |-> NoVal],
+    seq = [client \in 1..N |-> 0],
     request,
     response;
 
-
-
-macro sendReadRequest() begin
-    with var \in Variables do
-        request := [type|->"Read", var|->var, val|->NoVal];
-    end with;
-
+macro sendReadRequest(var) begin
+    request := [client|->this, seq|->seq[this], type|->"Read", var|->var, val|->NoVal];
 end macro;
 
-macro awaitReadResponse() begin
-    await responseIsReady ;
-    responseIsReady := FALSE;
+macro sendWriteRequest(var, val) begin
+    request := [client|->this, seq|->seq[this], type|->"Write", var|->var, val|->val];
 end macro;
 
-macro sendWriteRequest() begin
-    with var \in Variables, val \in Values do
-        request := [type|->"Write", var|->var, val|->val];
-    end with;
-end macro;
+macro awaitResponse() begin
+    await response.client = this /\ response.seq = seq[this];
+end
 
-macro awaitWriteResponse() begin
-    await responseIsReady ;
-    responseIsReady := FALSE;
-end macro;
 
 process Client \in 1..N
 begin
 c1: await storeIsIdle;
 c2: storeIsIdle := FALSE;
-    either
-        sendReadRequest();
-        car: awaitReadResponse();
+c3: seq[self] := seq[self] + 1;
+c4: either
+        with var \in Variables do
+            sendReadRequest(var);
+        end with;
     or
-        sendWriteRequest();
-        caw: awaitWriteResponse();
+        with var \in Variables, val \in Values do
+            sendWriteRequest(var, val);
+        end with;
     end either;
+c5: awaitResponse();
 end process
 
 process Store = 0
 begin
 s1: await ~storeIsIdle;
     if request.type = "Read" then
-        response := [type|->"Read", var|->request.var, val|->storeData[request.var]];
+        response := [client|->request.client, seq|->request.seq, type|->"Read", var|->request.var, val|->storeData[request.var]];
     else \* it's a write
         storeData[request.var] := request.val;
-        response := [type|->"Write", var|->request.var, val|->request.val];
+        response := [client|->request.client, seq|->request.seq, type|->"Write", var|->request.var, val|->request.val];
     end if;
-    responseIsReady := TRUE;
 s2: storeIsIdle := TRUE;
 end process
 end algorithm
