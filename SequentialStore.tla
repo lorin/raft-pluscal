@@ -29,11 +29,13 @@ macro awaitReadResponse() begin
 end macro;
 
 macro sendWriteRequest() begin
-    skip;
+    with var \in Variables, val \in Values do
+        request := [type|->"Write", var|->var, val|->val];
+    end with;
 end macro;
 
 macro awaitWriteResponse() begin
-    await ResponseIsReady ;
+    await responseIsReady ;
     responseIsReady := FALSE;
 end macro;
 
@@ -54,8 +56,9 @@ process Store = 0
 begin
 s1: await ~storeIsIdle;
     if request.type = "Read" then
-        response := [type|->"Read", var|->request.var, val|->storeData[var]];
-    else
+        response := [type|->"Read", var|->request.var, val|->storeData[request.var]];
+    else \* it's a write
+        storeData[request.var] := request.val;
         response := [type|->"Write", var|->request.var, val|->request.val];
     end if;
     responseIsReady := TRUE;
