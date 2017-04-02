@@ -15,6 +15,18 @@ variables
     response;
     log = <<>>;
 
+define IsRead(i)  == log[i].isResponse /\ log[i].type = "Read"  /\ log[i].val \in Values
+       IsWrite(i) == log[i].isResponse /\ log[i].type = "Write" /\ log[i].val \in Values
+        \* Every read of a variable must correspond to the most recent write of that variable
+       ReadLastWrite == \A i \in 1..Len(log) : IsRead(i) =>
+        (\E j \in 1..(i-1) :
+            /\ IsWrite(j)
+            /\ log[i].var = log[j].var
+            /\ log[i].val = log[j].val
+            /\ ~ (\E k \in (j+1)..(i-1) : /\ log[i].var = log[k].var
+                                          /\ log[i].val # log[k].val))
+end define;
+
 macro sendReadRequest(var) begin
     request := [client|->self, seq|->seq[self], type|->"Read", var|->var, val|->NoVal, isResponse|->FALSE];
     log := Append(log, request);
@@ -59,23 +71,9 @@ s1: await ~storeIsIdle;
     end if;
 s2: storeIsIdle := TRUE;
 end process
+
 end algorithm
 
 *)
 
-IsRead(i)  == log[i].isResponse /\ log[i].type = "Read"  /\ log[i].val \in Values
-IsWrite(i) == log[i].isResponse /\ llog[i].type = "Write" /\ log[i].val \in Values
-
-\* Every read of a variable must correspond to the most recent write of that variable
-ReadLastWrite ==
-    \A i \in 1..Len(log) IsRead(i) =>
-        (\E j \in 1..(i-1)
-            /\ IsWrite(j)
-            /\ log[i].var = log[j].var
-            /\ log[i].val = log[j].val
-            /\ ~ (\E k \in (j+1)..(i-1)
-                /\ log[i].var = log[k].var
-                /\ log[i].val # log[k].val
-            )
-        )
 =============================================================================
