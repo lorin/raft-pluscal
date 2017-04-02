@@ -42,6 +42,18 @@ macro awaitResponse() begin
     log := Append(log, response);
 end macro;
 
+process Store = 0
+begin
+s1: await ~storeIsIdle;
+    if request.type = "Read" then
+        response := [client|->request.client, seq|->request.seq, type|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE];
+    else \* it's a write
+        storeData[request.var] := request.val;
+        response := [client|->request.client, seq|->request.seq, type|->"Write", var|->request.var, val|->request.val, isResponse|->TRUE];
+    end if;
+s2: storeIsIdle := TRUE;
+    goto s1;
+end process
 
 process Client \in 1..N
 begin
@@ -61,18 +73,6 @@ c4: awaitResponse();
     goto c1;
 end process
 
-process Store = 0
-begin
-s1: await ~storeIsIdle;
-    if request.type = "Read" then
-        response := [client|->request.client, seq|->request.seq, type|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE];
-    else \* it's a write
-        storeData[request.var] := request.val;
-        response := [client|->request.client, seq|->request.seq, type|->"Write", var|->request.var, val|->request.val, isResponse|->TRUE];
-    end if;
-s2: storeIsIdle := TRUE;
-    goto s1;
-end process
 
 end algorithm
 
