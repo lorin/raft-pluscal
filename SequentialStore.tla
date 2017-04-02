@@ -8,9 +8,10 @@ CONSTANT NoVal
 --algorithm SequentialStore
 
 variables
-    storeIsIdle = TRUE;
-    storeData = [x \in Variables |-> NoVal];
-    request;
+    storeIsIdle = TRUE,
+    storeData = [x \in Variables |-> NoVal],
+    request,
+    response;
 
 
 macro sendReadRequest() begin
@@ -37,17 +38,19 @@ begin
 c1: await storeIsIdle;
 c2: storeIsIdle := FALSE;
     either
-        r1: sendReadRequest();
-        r2: awaitReadResponse();
+        sendReadRequest();
+        car: awaitReadResponse();
     or
-        w1: sendWriteRequest();
-        w2: awaitWriteResponse();
+        sendWriteRequest();
+        caw: awaitWriteResponse();
     end either ;
 end process
 
 process Store = 0
 begin
 s1: await ~storeIsIdle;
+    if request.type = "Read" then
+    end if
 end process
 end algorithm
 
