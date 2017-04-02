@@ -1,15 +1,23 @@
 -------------------------- MODULE SequentialStore --------------------------
 EXTENDS Naturals
 CONSTANTS N
+CONSTANTS Variables, Values
+CONSTANT NoVal
 
 (*
 --algorithm SequentialStore
 
 variables
     storeIsIdle = TRUE;
+    storeData = [x \in Variables \-> NoVal];
+    request;
+
 
 macro sendReadRequest() begin
-    skip ;
+    with var \in Variables do
+        request := [type|->"Read", var|->var, val|->NoVal];
+    end with;
+
 end macro;
 
 macro awaitReadResponse() begin
@@ -39,7 +47,7 @@ end process
 
 process Store = 0
 begin
-s1: await \not storeIsIdle;
+s1: await ~storeIsIdle;
 end process
 end algorithm
 
