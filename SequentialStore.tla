@@ -15,16 +15,16 @@ variables
     response;
 
 macro sendReadRequest(var) begin
-    request := [client|->this, seq|->seq[this], type|->"Read", var|->var, val|->NoVal];
+    request := [client|->self, seq|->seq[self], type|->"Read", var|->var, val|->NoVal];
 end macro;
 
 macro sendWriteRequest(var, val) begin
-    request := [client|->this, seq|->seq[this], type|->"Write", var|->var, val|->val];
+    request := [client|->self, seq|->seq[self], type|->"Write", var|->var, val|->val];
 end macro;
 
 macro awaitResponse() begin
-    await response.client = this /\ response.seq = seq[this];
-end
+    await response.client = self /\ response.seq = seq[self];
+end macro;
 
 
 process Client \in 1..N
