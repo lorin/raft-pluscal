@@ -9,9 +9,11 @@ CONSTANT NoVal
 
 variables
     storeIsIdle = TRUE,
+    responseIsReady = FALSE,
     storeData = [x \in Variables |-> NoVal],
     request,
     response;
+
 
 
 macro sendReadRequest() begin
@@ -22,15 +24,17 @@ macro sendReadRequest() begin
 end macro;
 
 macro awaitReadResponse() begin
-    skip ;
+    await responseIsReady ;
+    responseIsReady := FALSE;
 end macro;
 
 macro sendWriteRequest() begin
-    skip ;
+    skip;
 end macro;
 
 macro awaitWriteResponse() begin
-    skip ;
+    await ResponseIsReady ;
+    responseIsReady := FALSE;
 end macro;
 
 process Client \in 1..N
@@ -50,7 +54,12 @@ process Store = 0
 begin
 s1: await ~storeIsIdle;
     if request.type = "Read" then
+        response := [type|->"Read", var|->request.var, val->storeData[var]];
+    else
+        response := [type|->"Write", var->request.var, val->request.val];
     end if
+    responseIsReady := TRUE;
+s2: storeIsIdle := TRUE;
 end process
 end algorithm
 
