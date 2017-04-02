@@ -1,4 +1,5 @@
 -------------------------- MODULE SequentialStore --------------------------
+EXTENDS Naturals
 CONSTANTS N
 
 (*
@@ -25,8 +26,8 @@ end macro;
 
 process Client \in 1..N
 begin
-c1: await storeIsIdle
-c2: storeIsIdle := FALSE
+c1: await storeIsIdle;
+c2: storeIsIdle := FALSE;
     either
         r1: sendReadRequest();
         r2: awaitReadResponse();
