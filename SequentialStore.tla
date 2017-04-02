@@ -47,17 +47,17 @@ c2: storeIsIdle := FALSE;
     or
         sendWriteRequest();
         caw: awaitWriteResponse();
-    end either ;
+    end either;
 end process
 
 process Store = 0
 begin
 s1: await ~storeIsIdle;
     if request.type = "Read" then
-        response := [type|->"Read", var|->request.var, val->storeData[var]];
+        response := [type|->"Read", var|->request.var, val|->storeData[var]];
     else
-        response := [type|->"Write", var->request.var, val->request.val];
-    end if
+        response := [type|->"Write", var|->request.var, val|->request.val];
+    end if;
     responseIsReady := TRUE;
 s2: storeIsIdle := TRUE;
 end process
