@@ -36,6 +36,11 @@ c2: storeIsIdle := FALSE;
         w2: awaitWriteResponse();
     end either ;
 end process
+
+process Store = 0
+begin
+s1: await \not storeIsIdle;
+end process
 end algorithm
 
 *)
