@@ -8,11 +8,10 @@ CONSTANT NoVal
 --algorithm SequentialStore
 
 variables
-    storeIsIdle = TRUE,
     storeData = [x \in Variables |-> NoVal],
     seq = [client \in 1..N |-> 0],
-    request,
-    response = [client|->NoVal, seq|->NoVal],
+    requestQueue = <<>>;
+    responseQueues = [client \in 1..N |-> <<>>];
     log = <<>>;
 
 define IsRead(i)  == log[i].isResponse /\ log[i].type = "Read"  /\ log[i].val \in Values
@@ -27,40 +26,43 @@ define IsRead(i)  == log[i].isResponse /\ log[i].type = "Read"  /\ log[i].val \i
                                           /\ log[i].val # log[k].val))
 end define;
 
-macro sendReadRequest(var) begin
-    request := [client|->self, seq|->seq[self], type|->"Read", var|->var, val|->NoVal, isResponse|->FALSE];
-    log := Append(log, request);
+macro sendReadRequest(var)
+begin sendRequest([client|->self, seq|->seq[self], type|->"Read", var|->var, val|->NoVal, isResponse|->FALSE]);
 end macro;
 
-macro sendWriteRequest(var, val) begin
-    request := [client|->self, seq|->seq[self], type|->"Write", var|->var, val|->val, isResponse|->FALSE];
-    log := Append(log, request);
+macro sendWriteRequest(var, val)
+begin sendRequest([client|->self, seq|->seq[self], type|->"Write", var|->var, val|->val, isResponse|->FALSE]);
 end macro;
 
-macro awaitResponse() begin
-    await response.client = self /\ response.seq = seq[self];
-    log := Append(log, response);
+macro sendRequest(r) begin
+    requestQueue := Append(requestQueue, r);
+    log := Append(log, r);
 end macro;
 
-process Store = 0
+macro awaitResponse()
+begin await Len(responseQueues[self]) > 0;
+      log := Append(log, Head(responseQueues[self]));
+      responseQueues[self] := Tail(responseQueues[self]);
+end macro;
+
+macro pendingRequest()
+begin len(requestQueue) > 0
+end macro;
+
+macro getNextRequest()
+begin request := Head(requestQueue);
+      requestQueue := Tail(requestQueue)
+end macro;
+
+macro clearResponseQueue()
 begin
-s1: await ~storeIsIdle;
-    if request.type = "Read" then
-        response := [client|->request.client, seq|->request.seq, type|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE];
-    else \* it's a write
-        storeData[request.var] := request.val;
-        response := [client|->request.client, seq|->request.seq, type|->"Write", var|->request.var, val|->request.val, isResponse|->TRUE];
-    end if;
-s2: storeIsIdle := TRUE;
-    goto s1;
-end process
+    responseQueues[self] := <<>>;
+end macro;
 
 process Client \in 1..N
 begin
-c1: await storeIsIdle;
-c2: seq[self] := seq[self] + 1;
-c3: storeIsIdle := FALSE;
-    either
+c1: seq[self] := seq[self] + 1;
+c2: either
         with var \in Variables do
             sendReadRequest(var);
         end with;
@@ -70,9 +72,23 @@ c3: storeIsIdle := FALSE;
         end with;
     end either;
 c4: awaitResponse();
-    goto c1;
+c5: goto c1;
 end process
 
+process Store = 0
+variables request, response;
+begin
+s1: await pendingRequest();
+s2: getNextRequest();
+s3: if request.type = "Read" then
+        response := [client|->request.client, seq|->request.seq, type|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE];
+      else \* it's a write
+        storeData[request.var] := request.val;
+        response := [client|->request.client, seq|->request.seq, type|->"Write", var|->request.var, val|->request.val, isResponse|->TRUE];
+      end if;
+s4: responseQueues[response.client] := Append(responseQueues[response.client], response);
+s5: goto s1;
+end process
 
 end algorithm
 
@@ -111,7 +127,7 @@ Init == (* Global variables *)
 c1(self) == /\ pc[self] = "c1"
             /\ storeIsIdle
             /\ pc' = [pc EXCEPT ![self] = "c2"]
-            /\ UNCHANGED << storeIsIdle, storeData, seq, request, response, 
+            /\ UNCHANGED << storeIsIdle, storeData, seq, request, response,
                             log >>
 
 c2(self) == /\ pc[self] = "c2"
