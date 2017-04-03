@@ -26,17 +26,17 @@ define IsRead(i)  == log[i].isResponse /\ log[i].type = "Read"  /\ log[i].val \i
                                           /\ log[i].val # log[k].val))
 end define;
 
+macro sendRequest(r) begin
+    requestQueue := Append(requestQueue, r);
+    log := Append(log, r);
+end macro;
+
 macro sendReadRequest(var)
 begin sendRequest([client|->self, seq|->seq[self], type|->"Read", var|->var, val|->NoVal, isResponse|->FALSE]);
 end macro;
 
 macro sendWriteRequest(var, val)
 begin sendRequest([client|->self, seq|->seq[self], type|->"Write", var|->var, val|->val, isResponse|->FALSE]);
-end macro;
-
-macro sendRequest(r) begin
-    requestQueue := Append(requestQueue, r);
-    log := Append(log, r);
 end macro;
 
 macro awaitResponse()
