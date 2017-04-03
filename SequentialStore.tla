@@ -19,23 +19,21 @@ variables
     log = <<>>;
     active = 0;
 
-define IsRead(i)  == /\ log[i].type = ResponseType
-                     /\ log[i].op = ReadOp
-                     /\ log[i].val \in Values
+define IsRead(i, var, val)  == /\ log[i].type = ResponseType
+                               /\ log[i].op = ReadOp
+                               /\ log[i].var = var
+                               /\ log[i].val = val
 
-       IsWrite(i) == /\ log[i].type = ResponseType
-                     /\ log[i].op = WriteOp
-                     /\ log[i].val \in Values
+       IsWrite(i, var, val) == /\ log[i].type = ResponseType
+                               /\ log[i].op = WriteOp
+                               /\ log[i].var = var
+                               /\ log[i].val = val
         \* Every read of a variable must correspond to the most recent write of that variable
-       ReadLastWrite == \A i \in 1..Len(log) : IsRead(i) =>
-        (\E j \in 1..(i-1) :
-            /\ IsWrite(j)
-            /\ log[i].var = log[j].var
-            /\ log[i].val = log[j].val
-            /\ ~ (\E k \in (j+1)..(i-1) : /\ IsWrite(k)
-                                          /\ log[i].var = log[k].var
-                                          /\ log[i].val # log[k].val))
-end define;
+       ReadLastWrite == \A i \in 1..Len(log), var \in Variables, val \in Values :
+           IsRead(i, var, val) =>
+               \E j \in 1..(i-1) : /\ IsWrite(j, var, val)
+                                   /\ ~ (\E k \in (j+1)..(i-1), v \in (Values \ {val}): IsWrite(k, var, v))
+       end define;
 
 macro sendRequest(r) begin
     requestQueue := Append(requestQueue, r);
