@@ -14,8 +14,8 @@ variables
     responseQueues = [client \in 1..N |-> <<>>];
     log = <<>>;
 
-define IsRead(i)  == log[i].isResponse /\ log[i].type = "Read"  /\ log[i].val \in Values
-       IsWrite(i) == log[i].isResponse /\ log[i].type = "Write" /\ log[i].val \in Values
+define IsRead(i)  == log[i].isResponse /\ log[i].op = "Read"  /\ log[i].val \in Values
+       IsWrite(i) == log[i].isResponse /\ log[i].op = "Write" /\ log[i].val \in Values
         \* Every read of a variable must correspond to the most recent write of that variable
        ReadLastWrite == \A i \in 1..Len(log) : IsRead(i) =>
         (\E j \in 1..(i-1) :
@@ -32,11 +32,11 @@ macro sendRequest(r) begin
 end macro;
 
 macro sendReadRequest(var)
-begin sendRequest([client|->self, seq|->seq[self], type|->"Read", var|->var, val|->NoVal, isResponse|->FALSE]);
+begin sendRequest([client|->self, seq|->seq[self], op|->"Read", var|->var, val|->NoVal, isResponse|->FALSE]);
 end macro;
 
 macro sendWriteRequest(var, val)
-begin sendRequest([client|->self, seq|->seq[self], type|->"Write", var|->var, val|->val, isResponse|->FALSE]);
+begin sendRequest([client|->self, seq|->seq[self], op|->"Write", var|->var, val|->val, isResponse|->FALSE]);
 end macro;
 
 macro awaitResponse()
@@ -80,11 +80,11 @@ variables request, response;
 begin
 s1: awaitPendingRequest();
 s2: getNextRequest();
-s3: if request.type = "Read" then
-        response := [client|->request.client, seq|->request.seq, type|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE];
+s3: if request.op = "Read" then
+        response := [client|->request.client, seq|->request.seq, op|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE];
       else \* it's a write
         storeData[request.var] := request.val;
-        response := [client|->request.client, seq|->request.seq, type|->"Write", var|->request.var, val|->request.val, isResponse|->TRUE];
+        response := [client|->request.client, seq|->request.seq, op|->"Write", var|->request.var, val|->request.val, isResponse|->TRUE];
       end if;
 s4: responseQueues[response.client] := Append(responseQueues[response.client], response);
 s5: goto s1;
@@ -98,8 +98,8 @@ CONSTANT defaultInitValue
 VARIABLES storeIsIdle, storeData, seq, request, response, log, pc
 
 (* define statement *)
-IsRead(i)  == log[i].isResponse /\ log[i].type = "Read"  /\ log[i].val \in Values
-IsWrite(i) == log[i].isResponse /\ log[i].type = "Write" /\ log[i].val \in Values
+IsRead(i)  == log[i].isResponse /\ log[i].op = "Read"  /\ log[i].val \in Values
+IsWrite(i) == log[i].isResponse /\ log[i].op = "Write" /\ log[i].val \in Values
 
 ReadLastWrite == \A i \in 1..Len(log) : IsRead(i) =>
  (\E j \in 1..(i-1) :
@@ -142,11 +142,11 @@ c3(self) == /\ pc[self] = "c3"
 
 c4(self) == /\ pc[self] = "c4"
             /\ \/ /\ \E var \in Variables:
-                       /\ request' = [client|->self, seq|->seq[self], type|->"Read", var|->var, val|->NoVal, isResponse|->FALSE]
+                       /\ request' = [client|->self, seq|->seq[self], op|->"Read", var|->var, val|->NoVal, isResponse|->FALSE]
                        /\ log' = Append(log, request')
                \/ /\ \E var \in Variables:
                        \E val \in Values:
-                         /\ request' = [client|->self, seq|->seq[self], type|->"Write", var|->var, val|->val, isResponse|->FALSE]
+                         /\ request' = [client|->self, seq|->seq[self], op|->"Write", var|->var, val|->val, isResponse|->FALSE]
                          /\ log' = Append(log, request')
             /\ pc' = [pc EXCEPT ![self] = "c5"]
             /\ UNCHANGED << storeIsIdle, storeData, seq, response >>
@@ -161,11 +161,11 @@ Client(self) == c1(self) \/ c2(self) \/ c3(self) \/ c4(self) \/ c5(self)
 
 s1 == /\ pc[0] = "s1"
       /\ ~storeIsIdle
-      /\ IF request.type = "Read"
-            THEN /\ response' = [client|->request.client, seq|->request.seq, type|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE]
+      /\ IF request.op = "Read"
+            THEN /\ response' = [client|->request.client, seq|->request.seq, op|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE]
                  /\ UNCHANGED storeData
             ELSE /\ storeData' = [storeData EXCEPT ![request.var] = request.val]
-                 /\ response' = [client|->request.client, seq|->request.seq, type|->"Write", var|->request.var, val|->request.val, isResponse|->TRUE]
+                 /\ response' = [client|->request.client, seq|->request.seq, op|->"Write", var|->request.var, val|->request.val, isResponse|->TRUE]
       /\ pc' = [pc EXCEPT ![0] = "s2"]
       /\ UNCHANGED << storeIsIdle, seq, request, log >>
 
