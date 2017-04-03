@@ -37,11 +37,11 @@ macro sendRequest(r) begin
 end macro;
 
 macro sendReadRequest(var)
-begin sendRequest([type|->"Request", client|->self, seq|->seq[self], op|->"Read", var|->var, val|->NoVal, isResponse|->FALSE]);
+begin sendRequest([type|->"Request", client|->self, seq|->seq[self], op|->"Read", var|->var, val|->NoVal]);
 end macro;
 
 macro sendWriteRequest(var, val)
-begin sendRequest([type|->"Request", client|->self, seq|->seq[self], op|->"Write", var|->var, val|->val, isResponse|->FALSE]);
+begin sendRequest([type|->"Request", client|->self, seq|->seq[self], op|->"Write", var|->var, val|->val]);
 end macro;
 
 macro awaitResponse()
@@ -86,10 +86,10 @@ begin
 s1: awaitPendingRequest();
 s2: getNextRequest();
 s3: if request.op = "Read" then
-        response := [type|->"Response", client|->request.client, seq|->request.seq, op|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE];
+        response := [type|->"Response", client|->request.client, seq|->request.seq, op|->"Read", var|->request.var, val|->storeData[request.var]];
       else \* it's a write
         storeData[request.var] := request.val;
-        response := [type|->"Response", client|->request.client, seq|->request.seq, op|->"Write", var|->request.var, val|->request.val, isResponse|->TRUE];
+        response := [type|->"Response", client|->request.client, seq|->request.seq, op|->"Write", var|->request.var, val|->request.val];
       end if;
 s4: responseQueues[response.client] := Append(responseQueues[response.client], response);
 s5: goto s1;
