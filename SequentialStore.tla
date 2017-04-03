@@ -17,7 +17,7 @@ variables
     requestQueue = <<>>;
     responseQueues = [client \in 1..N |-> <<>>];
     log = <<>>;
-    active = 0;
+    mutex = 0;
 
 define IsRead(i, var, val)  == /\ log[i].type = ResponseType
                                /\ log[i].op = ReadOp
@@ -68,23 +68,26 @@ begin
     responseQueues[self] := <<>>;
 end macro;
 
-process Client \in 1..N
+macro acquireMutex()
+begin await mutex = 0;
+      mutex := self;
+end macro;
 
+macro releaseMutex()
+begin mutex := 0;
+end macro;
+
+process Client \in 1..N
 begin
-c1: await active = 0;
-    active := self;
+c1: acquireMutex();
 c2: seq[self] := seq[self] + 1;
-c3: either
-        with var \in Variables do
-            sendReadRequest(var);
-        end with;
-    or
-        with var \in Variables, val \in Values do
-            sendWriteRequest(var, val);
-        end with;
-    end either;
+c3: with var \in Variables, val \in Values do
+        either sendReadRequest(var);
+        or     sendWriteRequest(var, val);
+        end either;
+    end with;
 c5: awaitResponse();
-c6: active := 0;
+c6: releaseMutex();
     goto c1;
 end process
 
@@ -94,7 +97,12 @@ begin
 s1: awaitPendingRequest();
 s2: getNextRequest();
 s3: if request.op = ReadOp then
-        response := [type|->ResponseType, client|->request.client, seq|->request.seq, op|->ReadOp, var|->request.var, val|->storeData[request.var]];
+response := [type|->ResponseType,
+             client|->request.client,
+             seq|->request.seq,
+             op|->ReadOp,
+             var|->request.var,
+             val|->storeData[request.var]];
       else \* it's a write
         storeData[request.var] := request.val;
         response := [type|->ResponseType, client|->request.client, seq|->request.seq, op|->WriteOp, var|->request.var, val|->request.val];
@@ -128,7 +136,7 @@ ReadLastWrite == \A i \in 1..Len(log), var \in Variables, val \in Values :
 
 VARIABLES request, response
 
-vars == << storeData, seq, requestQueue, responseQueues, log, active, pc, 
+vars == << storeData, seq, requestQueue, responseQueues, log, active, pc,
            request, response >>
 
 ProcSet == (1..N) \cup {0}
@@ -150,13 +158,13 @@ c1(self) == /\ pc[self] = "c1"
             /\ active = 0
             /\ active' = self
             /\ pc' = [pc EXCEPT ![self] = "c2"]
-            /\ UNCHANGED << storeData, seq, requestQueue, responseQueues, log, 
+            /\ UNCHANGED << storeData, seq, requestQueue, responseQueues, log,
                             request, response >>
 
 c2(self) == /\ pc[self] = "c2"
             /\ seq' = [seq EXCEPT ![self] = seq[self] + 1]
             /\ pc' = [pc EXCEPT ![self] = "c3"]
-            /\ UNCHANGED << storeData, requestQueue, responseQueues, log, 
+            /\ UNCHANGED << storeData, requestQueue, responseQueues, log,
                             active, request, response >>
 
 c3(self) == /\ pc[self] = "c3"
@@ -168,7 +176,7 @@ c3(self) == /\ pc[self] = "c3"
                          /\ requestQueue' = Append(requestQueue, ([type|->RequestType, client|->self, seq|->seq[self], op|->WriteOp, var|->var, val|->val]))
                          /\ log' = Append(log, ([type|->RequestType, client|->self, seq|->seq[self], op|->WriteOp, var|->var, val|->val]))
             /\ pc' = [pc EXCEPT ![self] = "c5"]
-            /\ UNCHANGED << storeData, seq, responseQueues, active, request, 
+            /\ UNCHANGED << storeData, seq, responseQueues, active, request,
                             response >>
 
 c5(self) == /\ pc[self] = "c5"
@@ -176,13 +184,13 @@ c5(self) == /\ pc[self] = "c5"
             /\ log' = Append(log, Head(responseQueues[self]))
             /\ responseQueues' = [responseQueues EXCEPT ![self] = Tail(responseQueues[self])]
             /\ pc' = [pc EXCEPT ![self] = "c6"]
-            /\ UNCHANGED << storeData, seq, requestQueue, active, request, 
+            /\ UNCHANGED << storeData, seq, requestQueue, active, request,
                             response >>
 
 c6(self) == /\ pc[self] = "c6"
             /\ active' = 0
             /\ pc' = [pc EXCEPT ![self] = "c1"]
-            /\ UNCHANGED << storeData, seq, requestQueue, responseQueues, log, 
+            /\ UNCHANGED << storeData, seq, requestQueue, responseQueues, log,
                             request, response >>
 
 Client(self) == c1(self) \/ c2(self) \/ c3(self) \/ c5(self) \/ c6(self)
@@ -190,7 +198,7 @@ Client(self) == c1(self) \/ c2(self) \/ c3(self) \/ c5(self) \/ c6(self)
 s1 == /\ pc[0] = "s1"
       /\ Len(requestQueue) > 0
       /\ pc' = [pc EXCEPT ![0] = "s2"]
-      /\ UNCHANGED << storeData, seq, requestQueue, responseQueues, log, 
+      /\ UNCHANGED << storeData, seq, requestQueue, responseQueues, log,
                       active, request, response >>
 
 s2 == /\ pc[0] = "s2"
@@ -211,12 +219,12 @@ s3 == /\ pc[0] = "s3"
 s4 == /\ pc[0] = "s4"
       /\ responseQueues' = [responseQueues EXCEPT ![response.client] = Append(responseQueues[response.client], response)]
       /\ pc' = [pc EXCEPT ![0] = "s5"]
-      /\ UNCHANGED << storeData, seq, requestQueue, log, active, request, 
+      /\ UNCHANGED << storeData, seq, requestQueue, log, active, request,
                       response >>
 
 s5 == /\ pc[0] = "s5"
       /\ pc' = [pc EXCEPT ![0] = "s1"]
-      /\ UNCHANGED << storeData, seq, requestQueue, responseQueues, log, 
+      /\ UNCHANGED << storeData, seq, requestQueue, responseQueues, log,
                       active, request, response >>
 
 Store == s1 \/ s2 \/ s3 \/ s4 \/ s5
