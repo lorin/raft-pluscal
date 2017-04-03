@@ -46,7 +46,7 @@ begin await Len(responseQueues[self]) > 0;
 end macro;
 
 macro pendingRequest()
-begin len(requestQueue) > 0
+begin len(requestQueue) > 0;
 end macro;
 
 macro getNextRequest()
