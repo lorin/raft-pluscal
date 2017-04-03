@@ -45,8 +45,8 @@ begin await Len(responseQueues[self]) > 0;
       responseQueues[self] := Tail(responseQueues[self]);
 end macro;
 
-macro pendingRequest()
-begin Len(requestQueue) > 0;
+macro awaitPendingRequest()
+begin await Len(requestQueue) > 0;
 end macro;
 
 macro getNextRequest()
@@ -78,7 +78,7 @@ end process
 process Store = 0
 variables request, response;
 begin
-s1: await pendingRequest();
+s1: awaitPendingRequest();
 s2: getNextRequest();
 s3: if request.type = "Read" then
         response := [client|->request.client, seq|->request.seq, type|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE];
