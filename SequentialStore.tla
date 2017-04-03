@@ -104,11 +104,16 @@ end algorithm
 *)
 \* BEGIN TRANSLATION
 CONSTANT defaultInitValue
-VARIABLES storeIsIdle, storeData, seq, request, response, log, pc
+VARIABLES storeData, seq, requestQueue, responseQueues, log, pc
 
 (* define statement *)
-IsRead(i)  == log[i].isResponse /\ log[i].op = "Read"  /\ log[i].val \in Values
-IsWrite(i) == log[i].isResponse /\ log[i].op = "Write" /\ log[i].val \in Values
+IsRead(i)  == /\ log[i].type = ResponseType
+              /\ log[i].op = ReadOp
+              /\ log[i].val \in Values
+
+IsWrite(i) == /\ log[i].type = ResponseType
+              /\ log[i].op = WriteOp
+              /\ log[i].val \in Values
 
 ReadLastWrite == \A i \in 1..Len(log) : IsRead(i) =>
  (\E j \in 1..(i-1) :
@@ -118,72 +123,88 @@ ReadLastWrite == \A i \in 1..Len(log) : IsRead(i) =>
      /\ ~ (\E k \in (j+1)..(i-1) : /\ log[i].var = log[k].var
                                    /\ log[i].val # log[k].val))
 
+VARIABLES request, response
 
-vars == << storeIsIdle, storeData, seq, request, response, log, pc >>
+vars == << storeData, seq, requestQueue, responseQueues, log, pc, request, 
+           response >>
 
 ProcSet == (1..N) \cup {0}
 
 Init == (* Global variables *)
-        /\ storeIsIdle = TRUE
         /\ storeData = [x \in Variables |-> NoVal]
         /\ seq = [client \in 1..N |-> 0]
+        /\ requestQueue = <<>>
+        /\ responseQueues = [client \in 1..N |-> <<>>]
+        /\ log = <<>>
+        (* Process Store *)
         /\ request = defaultInitValue
         /\ response = defaultInitValue
-        /\ log = <<>>
         /\ pc = [self \in ProcSet |-> CASE self \in 1..N -> "c1"
                                         [] self = 0 -> "s1"]
 
 c1(self) == /\ pc[self] = "c1"
-            /\ storeIsIdle
+            /\ seq' = [seq EXCEPT ![self] = seq[self] + 1]
             /\ pc' = [pc EXCEPT ![self] = "c2"]
-            /\ UNCHANGED << storeIsIdle, storeData, seq, request, response,
-                            log >>
+            /\ UNCHANGED << storeData, requestQueue, responseQueues, log, 
+                            request, response >>
 
 c2(self) == /\ pc[self] = "c2"
-            /\ storeIsIdle' = FALSE
-            /\ pc' = [pc EXCEPT ![self] = "c3"]
-            /\ UNCHANGED << storeData, seq, request, response, log >>
-
-c3(self) == /\ pc[self] = "c3"
-            /\ seq' = [seq EXCEPT ![self] = seq[self] + 1]
-            /\ pc' = [pc EXCEPT ![self] = "c4"]
-            /\ UNCHANGED << storeIsIdle, storeData, request, response, log >>
-
-c4(self) == /\ pc[self] = "c4"
             /\ \/ /\ \E var \in Variables:
-                       /\ request' = [client|->self, seq|->seq[self], op|->"Read", var|->var, val|->NoVal, isResponse|->FALSE]
-                       /\ log' = Append(log, request')
+                       /\ requestQueue' = Append(requestQueue, ([type|->RequestType, client|->self, seq|->seq[self], op|->ReadOp, var|->var, val|->NoVal]))
+                       /\ log' = Append(log, ([type|->RequestType, client|->self, seq|->seq[self], op|->ReadOp, var|->var, val|->NoVal]))
                \/ /\ \E var \in Variables:
                        \E val \in Values:
-                         /\ request' = [client|->self, seq|->seq[self], op|->"Write", var|->var, val|->val, isResponse|->FALSE]
-                         /\ log' = Append(log, request')
+                         /\ requestQueue' = Append(requestQueue, ([type|->RequestType, client|->self, seq|->seq[self], op|->WriteOp, var|->var, val|->val]))
+                         /\ log' = Append(log, ([type|->RequestType, client|->self, seq|->seq[self], op|->WriteOp, var|->var, val|->val]))
+            /\ pc' = [pc EXCEPT ![self] = "c4"]
+            /\ UNCHANGED << storeData, seq, responseQueues, request, response >>
+
+c4(self) == /\ pc[self] = "c4"
+            /\ Len(responseQueues[self]) > 0
+            /\ log' = Append(log, Head(responseQueues[self]))
+            /\ responseQueues' = [responseQueues EXCEPT ![self] = Tail(responseQueues[self])]
             /\ pc' = [pc EXCEPT ![self] = "c5"]
-            /\ UNCHANGED << storeIsIdle, storeData, seq, response >>
+            /\ UNCHANGED << storeData, seq, requestQueue, request, response >>
 
 c5(self) == /\ pc[self] = "c5"
-            /\ response.client = self /\ response.seq = seq[self]
-            /\ log' = Append(log, response)
-            /\ pc' = [pc EXCEPT ![self] = "Done"]
-            /\ UNCHANGED << storeIsIdle, storeData, seq, request, response >>
+            /\ pc' = [pc EXCEPT ![self] = "c1"]
+            /\ UNCHANGED << storeData, seq, requestQueue, responseQueues, log, 
+                            request, response >>
 
-Client(self) == c1(self) \/ c2(self) \/ c3(self) \/ c4(self) \/ c5(self)
+Client(self) == c1(self) \/ c2(self) \/ c4(self) \/ c5(self)
 
 s1 == /\ pc[0] = "s1"
-      /\ ~storeIsIdle
-      /\ IF request.op = "Read"
-            THEN /\ response' = [client|->request.client, seq|->request.seq, op|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE]
-                 /\ UNCHANGED storeData
-            ELSE /\ storeData' = [storeData EXCEPT ![request.var] = request.val]
-                 /\ response' = [client|->request.client, seq|->request.seq, op|->"Write", var|->request.var, val|->request.val, isResponse|->TRUE]
+      /\ Len(requestQueue) > 0
       /\ pc' = [pc EXCEPT ![0] = "s2"]
-      /\ UNCHANGED << storeIsIdle, seq, request, log >>
+      /\ UNCHANGED << storeData, seq, requestQueue, responseQueues, log, 
+                      request, response >>
 
 s2 == /\ pc[0] = "s2"
-      /\ storeIsIdle' = TRUE
-      /\ pc' = [pc EXCEPT ![0] = "Done"]
-      /\ UNCHANGED << storeData, seq, request, response, log >>
+      /\ request' = Head(requestQueue)
+      /\ requestQueue' = Tail(requestQueue)
+      /\ pc' = [pc EXCEPT ![0] = "s3"]
+      /\ UNCHANGED << storeData, seq, responseQueues, log, response >>
 
-Store == s1 \/ s2
+s3 == /\ pc[0] = "s3"
+      /\ IF request.op = ReadOp
+            THEN /\ response' = [type|->ResponseType, client|->request.client, seq|->request.seq, op|->ReadOp, var|->request.var, val|->storeData[request.var]]
+                 /\ UNCHANGED storeData
+            ELSE /\ storeData' = [storeData EXCEPT ![request.var] = request.val]
+                 /\ response' = [type|->ResponseType, client|->request.client, seq|->request.seq, op|->WriteOp, var|->request.var, val|->request.val]
+      /\ pc' = [pc EXCEPT ![0] = "s4"]
+      /\ UNCHANGED << seq, requestQueue, responseQueues, log, request >>
+
+s4 == /\ pc[0] = "s4"
+      /\ responseQueues' = [responseQueues EXCEPT ![response.client] = Append(responseQueues[response.client], response)]
+      /\ pc' = [pc EXCEPT ![0] = "s5"]
+      /\ UNCHANGED << storeData, seq, requestQueue, log, request, response >>
+
+s5 == /\ pc[0] = "s5"
+      /\ pc' = [pc EXCEPT ![0] = "s1"]
+      /\ UNCHANGED << storeData, seq, requestQueue, responseQueues, log, 
+                      request, response >>
+
+Store == s1 \/ s2 \/ s3 \/ s4 \/ s5
 
 Next == Store
            \/ (\E self \in 1..N: Client(self))
