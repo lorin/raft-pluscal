@@ -1,1 +1,4 @@
-Store.toolbox
+*.toolbox
+*.cfg
+*.old
+*.pdf
