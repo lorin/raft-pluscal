@@ -14,8 +14,13 @@ variables
     responseQueues = [client \in 1..N |-> <<>>];
     log = <<>>;
 
-define IsRead(i)  == log[i].isResponse /\ log[i].op = "Read"  /\ log[i].val \in Values
-       IsWrite(i) == log[i].isResponse /\ log[i].op = "Write" /\ log[i].val \in Values
+define IsRead(i)  == /\ log[i].type = "Response"
+                     /\ log[i].op = "Read"
+                     /\ log[i].val \in Values
+
+       IsWrite(i) == /\ log[i].type = "Response"
+                     /\ log[i].op = "Write"
+                     /\ log[i].val \in Values
         \* Every read of a variable must correspond to the most recent write of that variable
        ReadLastWrite == \A i \in 1..Len(log) : IsRead(i) =>
         (\E j \in 1..(i-1) :
@@ -32,11 +37,11 @@ macro sendRequest(r) begin
 end macro;
 
 macro sendReadRequest(var)
-begin sendRequest([client|->self, seq|->seq[self], op|->"Read", var|->var, val|->NoVal, isResponse|->FALSE]);
+begin sendRequest([type|->"Request", client|->self, seq|->seq[self], op|->"Read", var|->var, val|->NoVal, isResponse|->FALSE]);
 end macro;
 
 macro sendWriteRequest(var, val)
-begin sendRequest([client|->self, seq|->seq[self], op|->"Write", var|->var, val|->val, isResponse|->FALSE]);
+begin sendRequest([type|->"Request", client|->self, seq|->seq[self], op|->"Write", var|->var, val|->val, isResponse|->FALSE]);
 end macro;
 
 macro awaitResponse()
@@ -81,10 +86,10 @@ begin
 s1: awaitPendingRequest();
 s2: getNextRequest();
 s3: if request.op = "Read" then
-        response := [client|->request.client, seq|->request.seq, op|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE];
+        response := [type|->"Response", client|->request.client, seq|->request.seq, op|->"Read", var|->request.var, val|->storeData[request.var], isResponse|->TRUE];
       else \* it's a write
         storeData[request.var] := request.val;
-        response := [client|->request.client, seq|->request.seq, op|->"Write", var|->request.var, val|->request.val, isResponse|->TRUE];
+        response := [type|->"Response", client|->request.client, seq|->request.seq, op|->"Write", var|->request.var, val|->request.val, isResponse|->TRUE];
       end if;
 s4: responseQueues[response.client] := Append(responseQueues[response.client], response);
 s5: goto s1;
