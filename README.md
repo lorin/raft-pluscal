@@ -135,6 +135,20 @@ ASSUME \A var \in Variables, val \in Values, stOld, stNew :
 
 See [Store.tla](Store.tla) for the full module.
 
+## Sequential store
+
+Before we implement a specification for Raft, we'll start with something
+simpler: a specification for a *sequential* store. By a sequential store, we
+mean that the clients cannot make concurrent requests: only one client is
+permitted to make a request at a time.
+
+The specification will contain two kinds of processes:
+
+* clients that submit read and write requests
+* the store that processes the requests and responds
+
+
+
 ## Linearizability
 
 Raft claims to implement a [linearizable][bailis-linearizability] store. From
