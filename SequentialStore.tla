@@ -4,6 +4,10 @@ CONSTANTS N
 CONSTANTS Variables, Values
 CONSTANT NoVal
 
+CONSTANTS ReadOp, WriteOp
+CONSTANTS RequestType, ResponseType
+
+
 (*
 --algorithm SequentialStore
 
@@ -14,12 +18,12 @@ variables
     responseQueues = [client \in 1..N |-> <<>>];
     log = <<>>;
 
-define IsRead(i)  == /\ log[i].type = "Response"
-                     /\ log[i].op = "Read"
+define IsRead(i)  == /\ log[i].type = ResponseType
+                     /\ log[i].op = ReadOp
                      /\ log[i].val \in Values
 
-       IsWrite(i) == /\ log[i].type = "Response"
-                     /\ log[i].op = "Write"
+       IsWrite(i) == /\ log[i].type = ResponseType
+                     /\ log[i].op = WriteOp
                      /\ log[i].val \in Values
         \* Every read of a variable must correspond to the most recent write of that variable
        ReadLastWrite == \A i \in 1..Len(log) : IsRead(i) =>
@@ -37,11 +41,11 @@ macro sendRequest(r) begin
 end macro;
 
 macro sendReadRequest(var)
-begin sendRequest([type|->"Request", client|->self, seq|->seq[self], op|->"Read", var|->var, val|->NoVal]);
+begin sendRequest([type|->RequestType, client|->self, seq|->seq[self], op|->ReadOp, var|->var, val|->NoVal]);
 end macro;
 
 macro sendWriteRequest(var, val)
-begin sendRequest([type|->"Request", client|->self, seq|->seq[self], op|->"Write", var|->var, val|->val]);
+begin sendRequest([type|->RequestType, client|->self, seq|->seq[self], op|->WriteOp, var|->var, val|->val]);
 end macro;
 
 macro awaitResponse()
@@ -85,11 +89,11 @@ variables request, response;
 begin
 s1: awaitPendingRequest();
 s2: getNextRequest();
-s3: if request.op = "Read" then
-        response := [type|->"Response", client|->request.client, seq|->request.seq, op|->"Read", var|->request.var, val|->storeData[request.var]];
+s3: if request.op = ReadOp then
+        response := [type|->ResponseType, client|->request.client, seq|->request.seq, op|->ReadOp, var|->request.var, val|->storeData[request.var]];
       else \* it's a write
         storeData[request.var] := request.val;
-        response := [type|->"Response", client|->request.client, seq|->request.seq, op|->"Write", var|->request.var, val|->request.val];
+        response := [type|->ResponseType, client|->request.client, seq|->request.seq, op|->WriteOp, var|->request.var, val|->request.val];
       end if;
 s4: responseQueues[response.client] := Append(responseQueues[response.client], response);
 s5: goto s1;
