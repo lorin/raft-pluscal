@@ -76,11 +76,15 @@ macro releaseMutex()
 begin mutex := 0;
 end macro;
 
+macro incrementSequenceNumber()
+begin seq := seq + 1;
+end macro;
+
 process Client \in 1..N
 variable seq = 0;
 begin
 c1: acquireMutex();
-c2: seq := seq + 1;
+c2: incrementSequenceNumber();
 c3: with var \in Variables, val \in Values do
         either sendReadRequest(var);
         or     sendWriteRequest(var, val);
