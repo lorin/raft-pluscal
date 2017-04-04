@@ -3,7 +3,7 @@
 ## Introduction
 
 This doc describes a specification of the [Raft][raft-website] distributed consensus algorithm
-using PlusCal. The author of Raft, Diego Ongaro, has already written a [TLA+ spec
+using [PlusCal]. The author of Raft, Diego Ongaro, has already written a [TLA+ spec
 of Raft][raft-tla-spec], but I wanted to write in PlusCal in order to better learn
 PlusCal and to see if I could write a more readable spec than the original,
 which I find difficult to follow.
@@ -15,6 +15,7 @@ here to those examples.
 [raft-website]: https://raft.github.io/
 [raft-tla-spec]: https://github.com/ongardie/raft.tla
 [book]: http://lamport.azurewebsites.net/tla/book.html
+[PlusCal]: http://lamport.azurewebsites.net/tla/pluscal.htm
 
 ## Functional interface
 
