@@ -107,16 +107,11 @@ begin
 s1: awaitPendingRequest();
 s2: getNextRequest();
 s3: if request.op = ReadOp then
-response := [type|->ResponseType,
-             client|->request.client,
-             seq|->request.seq,
-             op|->ReadOp,
-             var|->request.var,
-             val|->storeData[request.var]];
-      else \* it's a write
+        response := Message(ResponseType, request.client, request.seq, ReadOp, request.var, storeData[request.var]);
+    else \* it's a write
         storeData[request.var] := request.val;
-        response := [type|->ResponseType, client|->request.client, seq|->request.seq, op|->WriteOp, var|->request.var, val|->request.val];
-      end if;
+        response := Message(ResponseType, request.client, request.seq, WriteOp, request.var, request.val);
+    end if;
 s4: responseQueues[response.client] := Append(responseQueues[response.client], response);
 s5: goto s1;
 end process
