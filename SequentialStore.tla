@@ -1,6 +1,6 @@
 -------------------------- MODULE SequentialStore --------------------------
 EXTENDS Naturals, Sequences
-CONSTANTS N
+CONSTANT N
 CONSTANTS Variables, Values
 CONSTANT NoVal
 
