@@ -34,8 +34,8 @@ define IsRead(i, var, val)  == /\ log[i].type = ResponseType
                \E j \in 1..(i-1) : /\ IsWrite(j, var, val)
                                    /\ ~ \E k \in (j+1)..(i-1), v \in Values \ {val}: IsWrite(k, var, v)
 
-       Message(type, client, seq, op, var, val) ==
-           [type|->type, client|->client, seq|->seq, op|->op, var|->var, val|->val]
+       Message(type, client, op, var, val) ==
+           [type|->type, client|->client, op|->op, var|->var, val|->val]
 end define;
 
 macro sendRequest(msg) begin
@@ -44,11 +44,11 @@ macro sendRequest(msg) begin
 end macro;
 
 macro sendReadRequest(var)
-begin sendRequest(Message(RequestType, self, seq, ReadOp, var, NoVal));
+begin sendRequest(Message(RequestType, self, ReadOp, var, NoVal));
 end macro;
 
 macro sendWriteRequest(var, val)
-begin sendRequest(Message(RequestType, self, seq, WriteOp, var, val));
+begin sendRequest(Message(RequestType, self, WriteOp, var, val));
 end macro;
 
 macro awaitResponse()
@@ -80,24 +80,16 @@ macro releaseMutex()
 begin mutex := 0;
 end macro;
 
-macro incrementSequenceNumber()
-begin seq := seq + 1;
-end macro;
-
 process Client \in 1..N
-variable seq = 0;
 begin
 c1: acquireMutex();
-c2: incrementSequenceNumber();
-c3: with var \in Variables do
+c2: with var \in Variables, val \in Values do
         either sendReadRequest(var);
-        or with val \in Values do
-            sendWriteRequest(var, val)
-           end with;
+        or sendWriteRequest(var, val)
         end either;
     end with;
-c5: awaitResponse();
-c6: releaseMutex();
+c3: awaitResponse();
+c4: releaseMutex();
     goto c1;
 end process
 
@@ -107,10 +99,10 @@ begin
 s1: awaitPendingRequest();
 s2: getNextRequest();
 s3: if request.op = ReadOp then
-        response := Message(ResponseType, request.client, request.seq, ReadOp, request.var, storeData[request.var]);
+        response := Message(ResponseType, request.client, ReadOp, request.var, storeData[request.var]);
     else \* it's a write
         storeData[request.var] := request.val;
-        response := Message(ResponseType, request.client, request.seq, WriteOp, request.var, request.val);
+        response := Message(ResponseType, request.client, WriteOp, request.var, request.val);
     end if;
 s4: responseQueues[response.client] := Append(responseQueues[response.client], response);
 s5: goto s1;
