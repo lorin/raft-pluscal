@@ -1,5 +1,7 @@
 # Raft spec in PlusCal
 
+(In progress...)
+
 ## Introduction
 
 This doc describes a specification of the [Raft][raft-website] distributed consensus algorithm
