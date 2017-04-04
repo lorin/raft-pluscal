@@ -52,7 +52,96 @@ The specification will contain two kinds of processes:
 * clients that submit read and write requests
 * the store that processes the requests and responds
 
+Since only one client can make a request at a time in a sequential store, we
+could use a single client as a model. Instead, I'm going to use multiple
+clients, but use a mutex to ensure that only one client executes at a time. This
+should make the code easier to generalize to the final Raft implementation.
 
+My focus here is on readability of the model, so I'm going to make heavy use of
+PlusCal macros so the model is easier to read.
+
+The complete model is at [SequentialStore.tla](SequentialStore.tla), I'll
+describe elements of it here.
+
+Here's how the clients behave:
+
+```
+process Client \in 1..N
+begin
+c1: acquireMutex();
+c2: with var \in Variables, val \in Values do
+        either sendReadRequest(var);
+        or sendWriteRequest(var, val)
+        end either;
+    end with;
+c3: awaitResponse();
+c4: releaseMutex();
+    goto c1;
+end process
+```
+
+A client acquires a mutex to ensure that client requests don't overlap. Clients
+send or a request for a read or a write, and then wait for a response.
+
+Here's the store behavior:
+
+```
+process Store = 0
+variables request,
+          response,
+          dict = [x \in Variables |-> NoVal];
+begin
+s1: getNextRequest();
+s2: if request.op = ReadOp then
+        response := Message(ResponseType, request.client, ReadOp, request.var, dict[request.var]);
+    else \* it's a write
+        dict[request.var] := request.val;
+        response := Message(ResponseType, request.client, WriteOp, request.var, request.val);
+    end if;
+s3: responseQueues[response.client] := Append(responseQueues[response.client], response);
+s4: goto s1;
+end process
+```
+
+The store retrieves the next request from its queue, and then either reads to
+the `dict` variable if it's a read, or writes to it if it's a write. It takes
+the response message and places it at the head of the queue corresponding to the
+client.
+
+The safety property we are interested in here is: every read of a variable must
+correspond to the most recent write of that variable. I expressed that like
+this:
+
+```
+ReadLastWrite == \A i \in 1..Len(log), var \in Variables, val \in Values :
+   IsRead(i, var, val) =>
+       \E j \in 1..(i-1) : /\ IsWrite(j, var, val)
+                           /\ ~ \E k \in (j+1)..(i-1), v \in Values \ {val}: IsWrite(k, var, v)
+```
+
+In order to check this property, I needed to keep track of the history of
+requests and responses. To do that, I created a variable called `log` that
+contains a sequence. Every time a client sends a request or receives a response, the client appends
+to the log:
+
+```
+macro sendRequest(msg) begin
+    requestQueue := Append(requestQueue, msg);
+    log := Append(log, msg);
+end macro;
+
+...
+
+macro awaitResponse()
+begin await Len(responseQueues[self]) > 0;
+      log := Append(log, Head(responseQueues[self]));
+      responseQueues[self] := Tail(responseQueues[self]);
+end macro;
+```
+
+The `log` variable is a good example of a bookkeeping variable that would not
+appear in a actual implementation, but is needed in the model in order to check
+a property with the model checker.
 
 ## Linearizability
 

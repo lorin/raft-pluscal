@@ -56,20 +56,6 @@ begin await Len(responseQueues[self]) > 0;
       responseQueues[self] := Tail(responseQueues[self]);
 end macro;
 
-macro awaitPendingRequest()
-begin await Len(requestQueue) > 0;
-end macro;
-
-macro getNextRequest()
-begin request := Head(requestQueue);
-      requestQueue := Tail(requestQueue)
-end macro;
-
-macro clearResponseQueue()
-begin
-    responseQueues[self] := <<>>;
-end macro;
-
 macro acquireMutex()
 begin await mutex = 0;
       mutex := self;
@@ -77,6 +63,12 @@ end macro;
 
 macro releaseMutex()
 begin mutex := 0;
+end macro;
+
+macro getNextRequest()
+begin await Len(requestQueue) > 0;
+      request := Head(requestQueue);
+      requestQueue := Tail(requestQueue)
 end macro;
 
 process Client \in 1..N
@@ -97,16 +89,15 @@ variables request,
           response,
           dict = [x \in Variables |-> NoVal];
 begin
-s1: awaitPendingRequest();
-s2: getNextRequest();
-s3: if request.op = ReadOp then
+s1: getNextRequest();
+s2: if request.op = ReadOp then
         response := Message(ResponseType, request.client, ReadOp, request.var, dict[request.var]);
     else \* it's a write
         dict[request.var] := request.val;
         response := Message(ResponseType, request.client, WriteOp, request.var, request.val);
     end if;
-s4: responseQueues[response.client] := Append(responseQueues[response.client], response);
-s5: goto s1;
+s3: responseQueues[response.client] := Append(responseQueues[response.client], response);
+s4: goto s1;
 end process
 
 end algorithm
@@ -189,36 +180,31 @@ Client(self) == c1(self) \/ c2(self) \/ c3(self) \/ c4(self)
 
 s1 == /\ pc[0] = "s1"
       /\ Len(requestQueue) > 0
-      /\ pc' = [pc EXCEPT ![0] = "s2"]
-      /\ UNCHANGED << requestQueue, responseQueues, log, mutex, request, 
-                      response, dict >>
-
-s2 == /\ pc[0] = "s2"
       /\ request' = Head(requestQueue)
       /\ requestQueue' = Tail(requestQueue)
-      /\ pc' = [pc EXCEPT ![0] = "s3"]
+      /\ pc' = [pc EXCEPT ![0] = "s2"]
       /\ UNCHANGED << responseQueues, log, mutex, response, dict >>
 
-s3 == /\ pc[0] = "s3"
+s2 == /\ pc[0] = "s2"
       /\ IF request.op = ReadOp
             THEN /\ response' = Message(ResponseType, request.client, ReadOp, request.var, dict[request.var])
                  /\ dict' = dict
             ELSE /\ dict' = [dict EXCEPT ![request.var] = request.val]
                  /\ response' = Message(ResponseType, request.client, WriteOp, request.var, request.val)
-      /\ pc' = [pc EXCEPT ![0] = "s4"]
+      /\ pc' = [pc EXCEPT ![0] = "s3"]
       /\ UNCHANGED << requestQueue, responseQueues, log, mutex, request >>
 
-s4 == /\ pc[0] = "s4"
+s3 == /\ pc[0] = "s3"
       /\ responseQueues' = [responseQueues EXCEPT ![response.client] = Append(responseQueues[response.client], response)]
-      /\ pc' = [pc EXCEPT ![0] = "s5"]
+      /\ pc' = [pc EXCEPT ![0] = "s4"]
       /\ UNCHANGED << requestQueue, log, mutex, request, response, dict >>
 
-s5 == /\ pc[0] = "s5"
+s4 == /\ pc[0] = "s4"
       /\ pc' = [pc EXCEPT ![0] = "s1"]
       /\ UNCHANGED << requestQueue, responseQueues, log, mutex, request, 
                       response, dict >>
 
-Store == s1 \/ s2 \/ s3 \/ s4 \/ s5
+Store == s1 \/ s2 \/ s3 \/ s4
 
 Next == Store
            \/ (\E self \in 1..N: Client(self))
