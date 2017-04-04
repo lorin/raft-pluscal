@@ -27,24 +27,28 @@ define IsRead(i, var, val)  == /\ log[i].type = ResponseType
                                /\ log[i].op = WriteOp
                                /\ log[i].var = var
                                /\ log[i].val = val
+
         \* Every read of a variable must correspond to the most recent write of that variable
        ReadLastWrite == \A i \in 1..Len(log), var \in Variables, val \in Values :
            IsRead(i, var, val) =>
                \E j \in 1..(i-1) : /\ IsWrite(j, var, val)
                                    /\ ~ \E k \in (j+1)..(i-1), v \in Values \ {val}: IsWrite(k, var, v)
-       end define;
 
-macro sendRequest(r) begin
-    requestQueue := Append(requestQueue, r);
-    log := Append(log, r);
+       Message(type, client, seq, op, var, val) ==
+           [type|->type, client|->client, seq|->seq, op|->op, var|->var, val|->val]
+end define;
+
+macro sendRequest(msg) begin
+    requestQueue := Append(requestQueue, msg);
+    log := Append(log, msg);
 end macro;
 
 macro sendReadRequest(var)
-begin sendRequest([type|->RequestType, client|->self, seq|->seq, op|->ReadOp, var|->var, val|->NoVal]);
+begin sendRequest(Message(RequestType, self, seq, ReadOp, var, NoVal));
 end macro;
 
 macro sendWriteRequest(var, val)
-begin sendRequest([type|->RequestType, client|->self, seq|->seq, op|->WriteOp, var|->var, val|->val]);
+begin sendRequest(Message(RequestType, self, seq, WriteOp, var, val));
 end macro;
 
 macro awaitResponse()
@@ -133,10 +137,14 @@ IsWrite(i, var, val) == /\ log[i].type = ResponseType
                         /\ log[i].var = var
                         /\ log[i].val = val
 
+
 ReadLastWrite == \A i \in 1..Len(log), var \in Variables, val \in Values :
     IsRead(i, var, val) =>
         \E j \in 1..(i-1) : /\ IsWrite(j, var, val)
                             /\ ~ \E k \in (j+1)..(i-1), v \in Values \ {val}: IsWrite(k, var, v)
+
+Message(type, client, seq, op, var, val) ==
+    [type|->type, client|->client, seq|->seq, op|->op, var|->var, val|->val]
 
 VARIABLES seq, request, response
 
@@ -175,10 +183,10 @@ c2(self) == /\ pc[self] = "c2"
 c3(self) == /\ pc[self] = "c3"
             /\ \E var \in Variables:
                  \E val \in Values:
-                   \/ /\ requestQueue' = Append(requestQueue, ([type|->RequestType, client|->self, seq|->seq[self], op|->ReadOp, var|->var, val|->NoVal]))
-                      /\ log' = Append(log, ([type|->RequestType, client|->self, seq|->seq[self], op|->ReadOp, var|->var, val|->NoVal]))
-                   \/ /\ requestQueue' = Append(requestQueue, ([type|->RequestType, client|->self, seq|->seq[self], op|->WriteOp, var|->var, val|->val]))
-                      /\ log' = Append(log, ([type|->RequestType, client|->self, seq|->seq[self], op|->WriteOp, var|->var, val|->val]))
+                   \/ /\ requestQueue' = Append(requestQueue, (Message(RequestType, self, seq[self], ReadOp, var, NoVal)))
+                      /\ log' = Append(log, (Message(RequestType, self, seq[self], ReadOp, var, NoVal)))
+                   \/ /\ requestQueue' = Append(requestQueue, (Message(RequestType, self, seq[self], WriteOp, var, val)))
+                      /\ log' = Append(log, (Message(RequestType, self, seq[self], WriteOp, var, val)))
             /\ pc' = [pc EXCEPT ![self] = "c5"]
             /\ UNCHANGED << storeData, responseQueues, mutex, seq, request, 
                             response >>
