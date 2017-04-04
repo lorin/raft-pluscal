@@ -89,9 +89,11 @@ variable seq = 0;
 begin
 c1: acquireMutex();
 c2: incrementSequenceNumber();
-c3: with var \in Variables, val \in Values do
+c3: with var \in Variables do
         either sendReadRequest(var);
-        or     sendWriteRequest(var, val);
+        or with val \in Values do
+            sendWriteRequest(var, val)
+           end with;
         end either;
     end with;
 c5: awaitResponse();
@@ -182,11 +184,11 @@ c2(self) == /\ pc[self] = "c2"
 
 c3(self) == /\ pc[self] = "c3"
             /\ \E var \in Variables:
-                 \E val \in Values:
-                   \/ /\ requestQueue' = Append(requestQueue, (Message(RequestType, self, seq[self], ReadOp, var, NoVal)))
-                      /\ log' = Append(log, (Message(RequestType, self, seq[self], ReadOp, var, NoVal)))
-                   \/ /\ requestQueue' = Append(requestQueue, (Message(RequestType, self, seq[self], WriteOp, var, val)))
-                      /\ log' = Append(log, (Message(RequestType, self, seq[self], WriteOp, var, val)))
+                 \/ /\ requestQueue' = Append(requestQueue, (Message(RequestType, self, seq[self], ReadOp, var, NoVal)))
+                    /\ log' = Append(log, (Message(RequestType, self, seq[self], ReadOp, var, NoVal)))
+                 \/ /\ \E val \in Values:
+                         /\ requestQueue' = Append(requestQueue, (Message(RequestType, self, seq[self], WriteOp, var, val)))
+                         /\ log' = Append(log, (Message(RequestType, self, seq[self], WriteOp, var, val)))
             /\ pc' = [pc EXCEPT ![self] = "c5"]
             /\ UNCHANGED << storeData, responseQueues, mutex, seq, request, 
                             response >>
