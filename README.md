@@ -15,7 +15,7 @@ here to those examples.
 [raft-website]: https://raft.github.io/
 [raft-tla-spec]: https://github.com/ongardie/raft.tla
 [book]: http://lamport.azurewebsites.net/tla/book.html
-[PlusCal]: http://lamport.azurewebsites.net/tla/pluscal.htm
+[PlusCal]: http://lamport.azurewebsites.net/tla/pluscal.html
 
 ## Functional interface
 
