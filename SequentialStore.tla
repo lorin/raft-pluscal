@@ -103,6 +103,8 @@ end process
 end algorithm
 
 *)
+
+
 \* BEGIN TRANSLATION
 CONSTANT defaultInitValue
 VARIABLES requestQueue, responseQueues, log, mutex, pc
@@ -216,5 +218,7 @@ Spec == Init /\ [][Next]_vars
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 \* END TRANSLATION
+
+AllClientsEventuallyRun == \A client \in 1..N : <>(pc[client] = "c2")
 
 =============================================================================
