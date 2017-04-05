@@ -194,6 +194,7 @@ In the Error-Trace window on the right, the last line is `<Back to state 5>`.
 The model checker found a path where it could loop forever without the liveness
 proeprty being true.
 
+## Raft
 
 
 ## Linearizability
