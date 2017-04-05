@@ -14,24 +14,25 @@ CONSTANTS RequestType, ResponseType
 variables
     requestQueue = <<>>;
     responseQueues = [client \in 1..N |-> <<>>];
-    log = <<>>;
+\*    log = <<>>;
     mutex = 0;
 
-define IsRead(i, var, val)  == /\ log[i].type = ResponseType
-                               /\ log[i].op = ReadOp
-                               /\ log[i].var = var
-                               /\ log[i].val = val
+define
+       \* IsRead(i, var, val)  == /\ log[i].type = ResponseType
+       \*                         /\ log[i].op = ReadOp
+       \*                         /\ log[i].var = var
+       \*                         /\ log[i].val = val
 
-       IsWrite(i, var, val) == /\ log[i].type = ResponseType
-                               /\ log[i].op = WriteOp
-                               /\ log[i].var = var
-                               /\ log[i].val = val
+       \* IsWrite(i, var, val) == /\ log[i].type = ResponseType
+       \*                         /\ log[i].op = WriteOp
+       \*                         /\ log[i].var = var
+       \*                         /\ log[i].val = val
 
-        \* Every read of a variable must correspond to the most recent write of that variable
-       ReadLastWrite == \A i \in 1..Len(log), var \in Variables, val \in Values :
-           IsRead(i, var, val) =>
-               \E j \in 1..(i-1) : /\ IsWrite(j, var, val)
-                                   /\ ~ \E k \in (j+1)..(i-1), v \in Values \ {val}: IsWrite(k, var, v)
+       \*  \* Every read of a variable must correspond to the most recent write of that variable
+       \* ReadLastWrite == \A i \in 1..Len(log), var \in Variables, val \in Values :
+       \*     IsRead(i, var, val) =>
+       \*         \E j \in 1..(i-1) : /\ IsWrite(j, var, val)
+       \*                             /\ ~ \E k \in (j+1)..(i-1), v \in Values \ {val}: IsWrite(k, var, v)
 
        Message(type, client, op, var, val) ==
            [type|->type, client|->client, op|->op, var|->var, val|->val]
@@ -39,7 +40,7 @@ end define;
 
 macro sendRequest(msg) begin
     requestQueue := Append(requestQueue, msg);
-    log := Append(log, msg);
+    \* log := Append(log, msg);
 end macro;
 
 macro sendReadRequest(var)
@@ -52,7 +53,7 @@ end macro;
 
 macro awaitResponse()
 begin await Len(responseQueues[self]) > 0;
-      log := Append(log, Head(responseQueues[self]));
+      \* log := Append(log, Head(responseQueues[self]));
       responseQueues[self] := Tail(responseQueues[self]);
 end macro;
 
@@ -107,39 +108,22 @@ end algorithm
 
 \* BEGIN TRANSLATION
 CONSTANT defaultInitValue
-VARIABLES requestQueue, responseQueues, log, mutex, pc
+VARIABLES requestQueue, responseQueues, mutex, pc
 
 (* define statement *)
-IsRead(i, var, val)  == /\ log[i].type = ResponseType
-                        /\ log[i].op = ReadOp
-                        /\ log[i].var = var
-                        /\ log[i].val = val
-
-IsWrite(i, var, val) == /\ log[i].type = ResponseType
-                        /\ log[i].op = WriteOp
-                        /\ log[i].var = var
-                        /\ log[i].val = val
-
-
-ReadLastWrite == \A i \in 1..Len(log), var \in Variables, val \in Values :
-    IsRead(i, var, val) =>
-        \E j \in 1..(i-1) : /\ IsWrite(j, var, val)
-                            /\ ~ \E k \in (j+1)..(i-1), v \in Values \ {val}: IsWrite(k, var, v)
-
 Message(type, client, op, var, val) ==
     [type|->type, client|->client, op|->op, var|->var, val|->val]
 
 VARIABLES request, response, dict
 
-vars == << requestQueue, responseQueues, log, mutex, pc, request, response, 
-           dict >>
+vars == << requestQueue, responseQueues, mutex, pc, request, response, dict
+        >>
 
 ProcSet == (1..N) \cup {0}
 
 Init == (* Global variables *)
         /\ requestQueue = <<>>
         /\ responseQueues = [client \in 1..N |-> <<>>]
-        /\ log = <<>>
         /\ mutex = 0
         (* Process Store *)
         /\ request = defaultInitValue
@@ -152,22 +136,19 @@ c1(self) == /\ pc[self] = "c1"
             /\ mutex = 0
             /\ mutex' = self
             /\ pc' = [pc EXCEPT ![self] = "c2"]
-            /\ UNCHANGED << requestQueue, responseQueues, log, request, 
-                            response, dict >>
+            /\ UNCHANGED << requestQueue, responseQueues, request, response, 
+                            dict >>
 
 c2(self) == /\ pc[self] = "c2"
             /\ \E var \in Variables:
                  \E val \in Values:
                    \/ /\ requestQueue' = Append(requestQueue, (Message(RequestType, self, ReadOp, var, NoVal)))
-                      /\ log' = Append(log, (Message(RequestType, self, ReadOp, var, NoVal)))
                    \/ /\ requestQueue' = Append(requestQueue, (Message(RequestType, self, WriteOp, var, val)))
-                      /\ log' = Append(log, (Message(RequestType, self, WriteOp, var, val)))
             /\ pc' = [pc EXCEPT ![self] = "c3"]
             /\ UNCHANGED << responseQueues, mutex, request, response, dict >>
 
 c3(self) == /\ pc[self] = "c3"
             /\ Len(responseQueues[self]) > 0
-            /\ log' = Append(log, Head(responseQueues[self]))
             /\ responseQueues' = [responseQueues EXCEPT ![self] = Tail(responseQueues[self])]
             /\ pc' = [pc EXCEPT ![self] = "c4"]
             /\ UNCHANGED << requestQueue, mutex, request, response, dict >>
@@ -175,8 +156,8 @@ c3(self) == /\ pc[self] = "c3"
 c4(self) == /\ pc[self] = "c4"
             /\ mutex' = 0
             /\ pc' = [pc EXCEPT ![self] = "c1"]
-            /\ UNCHANGED << requestQueue, responseQueues, log, request, 
-                            response, dict >>
+            /\ UNCHANGED << requestQueue, responseQueues, request, response, 
+                            dict >>
 
 Client(self) == c1(self) \/ c2(self) \/ c3(self) \/ c4(self)
 
@@ -185,7 +166,7 @@ s1 == /\ pc[0] = "s1"
       /\ request' = Head(requestQueue)
       /\ requestQueue' = Tail(requestQueue)
       /\ pc' = [pc EXCEPT ![0] = "s2"]
-      /\ UNCHANGED << responseQueues, log, mutex, response, dict >>
+      /\ UNCHANGED << responseQueues, mutex, response, dict >>
 
 s2 == /\ pc[0] = "s2"
       /\ IF request.op = ReadOp
@@ -194,17 +175,17 @@ s2 == /\ pc[0] = "s2"
             ELSE /\ dict' = [dict EXCEPT ![request.var] = request.val]
                  /\ response' = Message(ResponseType, request.client, WriteOp, request.var, request.val)
       /\ pc' = [pc EXCEPT ![0] = "s3"]
-      /\ UNCHANGED << requestQueue, responseQueues, log, mutex, request >>
+      /\ UNCHANGED << requestQueue, responseQueues, mutex, request >>
 
 s3 == /\ pc[0] = "s3"
       /\ responseQueues' = [responseQueues EXCEPT ![response.client] = Append(responseQueues[response.client], response)]
       /\ pc' = [pc EXCEPT ![0] = "s4"]
-      /\ UNCHANGED << requestQueue, log, mutex, request, response, dict >>
+      /\ UNCHANGED << requestQueue, mutex, request, response, dict >>
 
 s4 == /\ pc[0] = "s4"
       /\ pc' = [pc EXCEPT ![0] = "s1"]
-      /\ UNCHANGED << requestQueue, responseQueues, log, mutex, request, 
-                      response, dict >>
+      /\ UNCHANGED << requestQueue, responseQueues, mutex, request, response, 
+                      dict >>
 
 Store == s1 \/ s2 \/ s3 \/ s4
 

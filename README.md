@@ -146,6 +146,56 @@ The `log` variable is a good example of a bookkeeping variable that would not
 appear in a actual implementation, but is needed in the model in order to check
 a property with the model checker.
 
+### Checking liveness
+
+As an exercise, we'll do a simple liveness check. The check we'll do is to
+ensure that clients can always make progress.
+
+Here's the liveness property we'll check:
+
+```
+AllClientsEventuallyRun == \A client \in 1..N : <>(pc[client] = "c2")
+```
+
+This says that all clients eventually reach label "c2" when they execute.
+
+This property isn't satisfied by this model: one client may keep reacquiring the
+mutex, starving the other client. The TLA+ toolbox will check this for us.
+
+Liveness checks require temporal properties, which are much slower to check in
+the TLA+ toolbox than invariants.
+
+Before I ran the liveness check, I commented out all code that involved the
+"log" variable. That variable is only used for checking a safety property, and
+without it the liveness check is much simpler.
+
+I deliberately chose a small model to make things simple. These are the
+variables specified by "What is the model" in the Model Overview of the TLA+
+toolbox.
+
+```
+WriteOp <- "Write"
+ReadOp <- "Read"
+N <- 2
+ResponseType <- "Response"
+Variables <- [ model value ] {x}
+defaultInitValue <- [ model value ]
+Values <- {1}
+NoVal <- [ model value ]
+RequestType <- "Request"
+```
+
+The property we check is "AllClientsEventuallyRun".
+
+This model runs in under a second. It immediately finds an error: "Temporal
+properties were violated".
+
+In the Error-Trace window on the right, the last line is `<Back to state 5>`.
+The model checker found a path where it could loop forever without the liveness
+proeprty being true.
+
+
+
 ## Linearizability
 
 Raft claims to implement a [linearizable][bailis-linearizability] store. From
