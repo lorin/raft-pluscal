@@ -202,6 +202,6 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 \* END TRANSLATION
 
-AllClientsEventuallyRun == \A client \in 1..N : <>(pc[client] = "c2")
+AllClientsEventuallyRun == \A client \in 1..N : []<>(pc[client] = "c2")
 
 =============================================================================

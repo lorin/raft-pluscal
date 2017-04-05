@@ -154,13 +154,13 @@ ensure that clients can always make progress.
 Here's the liveness property we'll check:
 
 ```
-AllClientsEventuallyRun == \A client \in 1..N : <>(pc[client] = "c2")
+AllClientsEventuallyRun == \A client \in 1..N : []<>(pc[client] = "c2")
 ```
 
-This says that all clients eventually reach label "c2" when they execute.
+This says that clients can always eventually reach label "c2".
 
-This property isn't satisfied by this model: one client may keep reacquiring the
-mutex, starving the other client. The TLA+ toolbox will check this for us.
+This property isn't satisfied by this model: client 1 could keep reacquiring the
+mutex, starving client 2. The TLA+ toolbox will check this for us.
 
 Liveness checks require temporal properties, which are much slower to check in
 the TLA+ toolbox than invariants.
