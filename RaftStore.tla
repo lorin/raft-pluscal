@@ -71,7 +71,7 @@ f2:
     if request.type = AppendEntriesRequest then
         if request.term < currentTerm then
             RespondAppendEntries(self, request.sender, currentTerm, FALSE);
-        elsif Len(log[self]) < [request.prevLogIndex] then
+        elsif Len(log[self]) < request.prevLogIndex then
             RespondAppendEntries(self, request.sender, currentTerm, FALSE);
         elsif log[self][request.prevLogIndex].term /= request.prevLogTerm then
             log[self] := SubSeq(log[self], 1, request.prevLogIndex-1);
@@ -134,7 +134,7 @@ Init == (* Global variables *)
         /\ commitIndex = [s \in Servers |-> 0]
         (* Procedure ActAsLeader *)
         /\ leaderLastLogIndex = [ self \in ProcSet |-> defaultInitValue]
-        /\ nextIndex = [ self \in ProcSet |-> [s \in Severs |-> leaderLastLogIndex[self]+1]]
+        /\ nextIndex = [ self \in ProcSet |-> [s \in Servers |-> leaderLastLogIndex[self]+1]]
         /\ matchIndex = [ self \in ProcSet |-> [s \in Servers |-> 0]]
         /\ rpcQueue = [ self \in ProcSet |-> [s \in Servers |-> <<>>]]
         (* Procedure ActAsFollower *)
@@ -172,10 +172,10 @@ ActAsCandidate(self) == c1(self)
 
 f1(self) == /\ pc[self] = "f1"
             /\ \/ /\ Len(rpcQueue[self][self])>0
-                  /\ r' = Head(rpcQueue[self][self])
+                  /\ request' = [request EXCEPT ![self] = Head(rpcQueue[self][self])]
                   /\ rpcQueue' = [rpcQueue EXCEPT ![self][self] = Tail(rpcQueue[self][self])]
                   /\ pc' = [pc EXCEPT ![self] = "f2"]
-                  /\ UNCHANGED <<stack, currentTerm, request, state>>
+                  /\ UNCHANGED <<stack, currentTerm, state>>
                \/ /\ state' = [state EXCEPT ![self] = CandidateState]
                   /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
                   /\ request' = [request EXCEPT ![self] = Head(stack[self]).request]
@@ -187,31 +187,31 @@ f1(self) == /\ pc[self] = "f1"
                             request_, response >>
 
 f2(self) == /\ pc[self] = "f2"
-            /\ IF r.type = AppendEntriesRequest
-                  THEN /\ IF r.term < currentTerm[self]
-                             THEN /\ rpcQueue' = [rpcQueue EXCEPT ![self][r.receiver] = Append(rpcQueue[self][r.receiver],
-                                                                                                [sender|->self,
-                                                                                                 receiver|->(r.sender),
-                                                                                                 type|->AppendEntriesResponse,term|->currentTerm[self],
-                                                                                                 success|->FALSE])]
+            /\ IF request[self].type = AppendEntriesRequest
+                  THEN /\ IF request[self].term < currentTerm[self]
+                             THEN /\ rpcQueue' = [rpcQueue EXCEPT ![self][request[self].receiver] = Append(rpcQueue[self][request[self].receiver],
+                                                                                                      [sender|->self,
+                                                                                                       receiver|->(request[self].sender),
+                                                                                                       type|->AppendEntriesResponse,term|->currentTerm[self],
+                                                                                                       success|->FALSE])]
                                   /\ log' = log
-                             ELSE /\ IF Len(log[self]) < [r.prevLogIndex]
-                                        THEN /\ rpcQueue' = [rpcQueue EXCEPT ![self][r.receiver] = Append(rpcQueue[self][r.receiver],
-                                                                                                           [sender|->self,
-                                                                                                            receiver|->(r.sender),
-                                                                                                            type|->AppendEntriesResponse,term|->currentTerm[self],
-                                                                                                            success|->FALSE])]
+                             ELSE /\ IF Len(log[self]) < request[self].prevLogIndex
+                                        THEN /\ rpcQueue' = [rpcQueue EXCEPT ![self][request[self].receiver] = Append(rpcQueue[self][request[self].receiver],
+                                                                                                                 [sender|->self,
+                                                                                                                  receiver|->(request[self].sender),
+                                                                                                                  type|->AppendEntriesResponse,term|->currentTerm[self],
+                                                                                                                  success|->FALSE])]
                                              /\ log' = log
-                                        ELSE /\ IF log[self][r.prevLogIndex].term /= r.prevLogTerm
-                                                   THEN /\ log' = [log EXCEPT ![self] = SubSeq(log[self], 1, r.prevLogIndex-1)]
-                                                        /\ rpcQueue' = [rpcQueue EXCEPT ![self][r.receiver] = Append(rpcQueue[self][r.receiver],
-                                                                                                                      [sender|->self,
-                                                                                                                       receiver|->(r.sender),
-                                                                                                                       type|->AppendEntriesResponse,term|->currentTerm[self],
-                                                                                                                       success|->FALSE])]
-                                                   ELSE /\ log' = [log EXCEPT ![self] = log[self] \o r.entries]
+                                        ELSE /\ IF log[self][request[self].prevLogIndex].term /= request[self].prevLogTerm
+                                                   THEN /\ log' = [log EXCEPT ![self] = SubSeq(log[self], 1, request[self].prevLogIndex-1)]
+                                                        /\ rpcQueue' = [rpcQueue EXCEPT ![self][request[self].receiver] = Append(rpcQueue[self][request[self].receiver],
+                                                                                                                            [sender|->self,
+                                                                                                                             receiver|->(request[self].sender),
+                                                                                                                             type|->AppendEntriesResponse,term|->currentTerm[self],
+                                                                                                                             success|->FALSE])]
+                                                   ELSE /\ log' = [log EXCEPT ![self] = log[self] \o request[self].entries]
                                                         /\ UNCHANGED rpcQueue
-                       /\ IF r.leaderCommit > commitIndex[self]
+                       /\ IF request[self].leaderCommit > commitIndex[self]
                              THEN /\ commitIndex' = [commitIndex EXCEPT ![self] = Min(commitIndex[self], Len(log'[self]))]
                              ELSE /\ TRUE
                                   /\ UNCHANGED commitIndex
@@ -245,7 +245,7 @@ s1(self) == /\ pc[self] = "s1"
                                                                               rpcQueue  |->  rpcQueue[self],
                                                                               leaderLastLogIndex |->  leaderLastLogIndex[self] ] >>
                                                                           \o stack[self]]
-                                  /\ nextIndex' = [nextIndex EXCEPT ![self] = [s \in Severs |-> leaderLastLogIndex'[self]+1]]
+                                  /\ nextIndex' = [nextIndex EXCEPT ![self] = [s \in Servers |-> leaderLastLogIndex'[self]+1]]
                                   /\ matchIndex' = [matchIndex EXCEPT ![self] = [s \in Servers |-> 0]]
                                   /\ rpcQueue' = [rpcQueue EXCEPT ![self] = [s \in Servers |-> <<>>]]
                                   /\ pc' = [pc EXCEPT ![self] = "l1"]
