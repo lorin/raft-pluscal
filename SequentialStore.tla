@@ -71,7 +71,7 @@ begin await Len(requestQueue) > 0;
       requestQueue := Tail(requestQueue)
 end macro;
 
-process Client \in 1..N
+fair process Client \in 1..N
 begin
 c1: acquireMutex();
 c2: with var \in Variables, val \in Values do
@@ -84,7 +84,7 @@ c4: releaseMutex();
     goto c1;
 end process
 
-process Store = 0
+fair process Store = 0
 variables request,
           response,
           dict = [x \in Variables |-> NoVal];
@@ -213,7 +213,9 @@ Next == Store
            \/ (* Disjunct to prevent deadlock on termination *)
               ((\A self \in ProcSet: pc[self] = "Done") /\ UNCHANGED vars)
 
-Spec == Init /\ [][Next]_vars
+Spec == /\ Init /\ [][Next]_vars
+        /\ \A self \in 1..N : WF_vars(Client(self))
+        /\ WF_vars(Store)
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
