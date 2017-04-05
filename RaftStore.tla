@@ -17,14 +17,30 @@ define
     Min(m,n) == IF m < n THEN m ELSE n
 end define;
 
-macro RespondAppendEntries(sender, receiver, term, success)
-begin
+macro RespondAppendEntries(sender, receiver, term, success) begin
 rpcQueue[r.receiver] := Append(rpcQueue[r.receiver],
                                 [sender|->sender,
                                  receiver|->receiver,
                                  type|->AppendEntriesResponse,term|->term,
                                  success|->success]);
 end macro;
+
+
+macro electionTimeoutElapses() begin
+    state := CandidateState;
+end macro;
+
+macro reboot() begin
+    commitIndex[self] := 0;
+    lastApplied := 0;
+    state := FollowerState;
+    goto s1;
+end macro;
+
+macro applyToStateMachine(x) begin 
+    skip;
+end macro;
+
 
 procedure ActAsLeader(leaderLastLogIndex)
 variables nextIndex = [s \in Severs |-> leaderLastLogIndex+1],
@@ -66,23 +82,6 @@ f2:
     end if;
 end procedure;
 
-macro electionTimeoutElapses()
-begin
-    state = CandidateState;
-end macro;
-
-macro reboot()
-    commitIndex[self] := 0;
-    lastApplied := 0;
-    state := FollowerState;
-    goto s1;
-begin
-end macro;
-
-macro applyToStateMachine(x)
-begin skip;
-end macro;
-
 
 process Server \in Servers
 variables currentTerm = 0,
@@ -110,4 +109,5 @@ end algorithm
 
 =============================================================================
 \* Modification History
+\* Last modified Tue Apr 04 22:08:07 PDT 2017 by lorin
 \* Created Tue Apr 04 21:01:38 PDT 2017 by lorin
