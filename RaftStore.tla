@@ -30,6 +30,8 @@ procedure ActAsLeader(leaderLastLogIndex)
 variables nextIndex = [s \in Severs |-> leaderLastLogIndex+1],
           matchIndex = [s \in Servers |-> 0],
           rpcQueue = [s \in Servers |-> <<>>];
+begin
+l1: skip;
 end procedure;
 
 
@@ -47,12 +49,12 @@ f1: either
 f2:
     if r.type = AppendEntriesRequest then
         if r.term < currentTerm then
-            RespondAppendEntries(self, r.sender, currentTerm, FALSE)
-        else if Len(log[self]) < [r.prevLogIndex]
-            RespondAppendEntries(self, r.sender, currentTerm, FALSE)
-        else if log[self][r.prevLogIndex].term /= r.prevLogTerm
+            RespondAppendEntries(self, r.sender, currentTerm, FALSE);
+        elsif Len(log[self]) < [r.prevLogIndex] then
+            RespondAppendEntries(self, r.sender, currentTerm, FALSE);
+        elsif log[self][r.prevLogIndex].term /= r.prevLogTerm then
             log[self] := SubSeq(log[self], 1, r.prevLogIndex-1);
-            RespondAppendEntries(self, r.sender, currentTerm, FALSE)
+            RespondAppendEntries(self, r.sender, currentTerm, FALSE);
         else
             log[self] := log[self] \o r.entries;
         end if;
