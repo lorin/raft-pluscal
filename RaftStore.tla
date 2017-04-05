@@ -61,7 +61,7 @@ variable request;
 begin
 f1: either
         await Len(rpcQueue[self])>0;
-        r := Head(rpcQueue[self]);
+        request := Head(rpcQueue[self]);
         rpcQueue[self] := Tail(rpcQueue[self]);
     or
         electionTimeoutElapses();
@@ -72,14 +72,14 @@ f2:
         if request.term < currentTerm then
             RespondAppendEntries(self, request.sender, currentTerm, FALSE);
         elsif Len(log[self]) < [request.prevLogIndex] then
-            RespondAppendEntries(self, r.sender, currentTerm, FALSE);
+            RespondAppendEntries(self, request.sender, currentTerm, FALSE);
         elsif log[self][request.prevLogIndex].term /= request.prevLogTerm then
             log[self] := SubSeq(log[self], 1, request.prevLogIndex-1);
             RespondAppendEntries(self, request.sender, currentTerm, FALSE);
         else
             log[self] := log[self] \o request.entries;
         end if;
-        if r.leaderCommit > commitIndex[self] then
+        if request.leaderCommit > commitIndex[self] then
             commitIndex[self] := Min(commitIndex[self], Len(log[self]));
         end if;
     else \* RequestVoteRpc
