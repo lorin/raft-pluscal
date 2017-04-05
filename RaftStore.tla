@@ -42,6 +42,26 @@ macro applyToStateMachine(x) begin
     skip;
 end macro;
 
+macro AppendEntries() begin
+    if request.term < currentTerm then
+        RespondAppendEntries(self, request.sender, currentTerm, FALSE);
+    elsif Len(log[self]) < request.prevLogIndex then
+        RespondAppendEntries(self, request.sender, currentTerm, FALSE);
+    elsif log[self][request.prevLogIndex].term /= request.prevLogTerm then
+        log[self] := SubSeq(log[self], 1, request.prevLogIndex-1);
+        RespondAppendEntries(self, request.sender, currentTerm, FALSE);
+    else
+        log[self] := log[self] \o request.entries;
+    end if;
+    if request.leaderCommit > commitIndex[self] then
+        commitIndex[self] := Min(commitIndex[self], Len(log[self]));
+    end if;
+end macro;
+
+macro RequestVotes() begin
+    skip;
+end macro;
+
 
 procedure ActAsLeader(leaderLastLogIndex)
 variables nextIndex = [s \in Servers |-> leaderLastLogIndex+1],
@@ -69,21 +89,9 @@ f1: either
     end either;
 f2:
     if request.type = AppendEntriesRequest then
-        if request.term < currentTerm then
-            RespondAppendEntries(self, request.sender, currentTerm, FALSE);
-        elsif Len(log[self]) < request.prevLogIndex then
-            RespondAppendEntries(self, request.sender, currentTerm, FALSE);
-        elsif log[self][request.prevLogIndex].term /= request.prevLogTerm then
-            log[self] := SubSeq(log[self], 1, request.prevLogIndex-1);
-            RespondAppendEntries(self, request.sender, currentTerm, FALSE);
-        else
-            log[self] := log[self] \o request.entries;
-        end if;
-        if request.leaderCommit > commitIndex[self] then
-            commitIndex[self] := Min(commitIndex[self], Len(log[self]));
-        end if;
+        AppendEntries();
     else \* RequestVoteRpc
-        skip;
+        RequestVotes();
     end if;
 end procedure;
 
@@ -111,8 +119,8 @@ end algorithm
 
 *)
 \* BEGIN TRANSLATION
-\* Process variable currentTerm of process Server at line 92 col 11 changed to currentTerm_
-\* Process variable request of process Server at line 96 col 11 changed to request_
+\* Process variable currentTerm of process Server at line 100 col 11 changed to currentTerm_
+\* Process variable request of process Server at line 104 col 11 changed to request_
 CONSTANT defaultInitValue
 VARIABLES log, commitIndex, pc, stack
 
