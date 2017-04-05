@@ -1,5 +1,5 @@
 ----------------------------- MODULE RaftStore -----------------------------
-EXTENDS Sequences
+EXTENDS Naturals, Sequences
 
 CONSTANT Servers
 CONSTANT null
@@ -19,11 +19,11 @@ define
 end define;
 
 macro RespondAppendEntries(sender, receiver, term, success) begin
-rpcQueue[r.receiver] := Append(rpcQueue[r.receiver],
-                                [sender|->sender,
-                                 receiver|->receiver,
-                                 type|->AppendEntriesResponse,term|->term,
-                                 success|->success]);
+    rpcQueue[request.receiver] := Append(rpcQueue[request.receiver],
+                                    [sender|->sender,
+                                     receiver|->receiver,
+                                     type|->AppendEntriesResponse,term|->term,
+                                     success|->success]);
 end macro;
 
 
@@ -44,7 +44,7 @@ end macro;
 
 
 procedure ActAsLeader(leaderLastLogIndex)
-variables nextIndex = [s \in Severs |-> leaderLastLogIndex+1],
+variables nextIndex = [s \in Servers |-> leaderLastLogIndex+1],
           matchIndex = [s \in Servers |-> 0],
           rpcQueue = [s \in Servers |-> <<>>];
 begin
@@ -68,16 +68,16 @@ f1: either
         return;
     end either;
 f2:
-    if r.type = AppendEntriesRequest then
-        if r.term < currentTerm then
+    if request.type = AppendEntriesRequest then
+        if request.term < currentTerm then
+            RespondAppendEntries(self, request.sender, currentTerm, FALSE);
+        elsif Len(log[self]) < [request.prevLogIndex] then
             RespondAppendEntries(self, r.sender, currentTerm, FALSE);
-        elsif Len(log[self]) < [r.prevLogIndex] then
-            RespondAppendEntries(self, r.sender, currentTerm, FALSE);
-        elsif log[self][r.prevLogIndex].term /= r.prevLogTerm then
-            log[self] := SubSeq(log[self], 1, r.prevLogIndex-1);
-            RespondAppendEntries(self, r.sender, currentTerm, FALSE);
+        elsif log[self][request.prevLogIndex].term /= request.prevLogTerm then
+            log[self] := SubSeq(log[self], 1, request.prevLogIndex-1);
+            RespondAppendEntries(self, request.sender, currentTerm, FALSE);
         else
-            log[self] := log[self] \o r.entries;
+            log[self] := log[self] \o request.entries;
         end if;
         if r.leaderCommit > commitIndex[self] then
             commitIndex[self] := Min(commitIndex[self], Len(log[self]));
