@@ -19,13 +19,23 @@ define
 end define;
 
 macro RespondAppendEntries(sender, receiver, term, success) begin
-    rpcQueue[request.receiver] := Append(rpcQueue[request.receiver],
+    rpcQueue[receiver] := Append(rpcQueue[receiver],
                                     [sender|->sender,
                                      receiver|->receiver,
-                                     type|->AppendEntriesResponse,term|->term,
+                                     type|->AppendEntriesResponse,
+                                     term|->term,
                                      success|->success]);
 end macro;
 
+macro RespondRequestVote(sender, receiver, term, voteGranted) begin
+    rpcQueue[receiver] := Append(rpcQueue[receiver],
+                                    [sender|->sender,
+                                    receiver|->receiver,
+                                    type|->RequestVoteResponse,
+                                    term|->term,
+                                    voteGranted|->voteGranted]);
+
+end macro;
 
 macro electionTimeoutElapses() begin
     state := CandidateState;
@@ -58,8 +68,16 @@ macro AppendEntries() begin
     end if;
 end macro;
 
-macro RequestVotes() begin
-    skip;
+macro RequestVote() begin
+    if request.term < currentTerm then
+        RespondRequestVote(self, request.sender, currentTerm, FALSE);
+    else
+    elsif /\ (votedFor = null \/ votedFor = request.candidateId)
+          /\ candidatesLogIsAtLeastUpToDateAsReceiversLog(candidate, lastLogIndex, lastLogTerm) then
+        RespondRequestVote(self, request.sender, currentTerm, TRUE);
+    else
+        RespondRequestVote(self, request.sender, currentTerm, FALSE);
+    end if;
 end macro;
 
 
@@ -90,8 +108,10 @@ f1: either
 f2:
     if request.type = AppendEntriesRequest then
         AppendEntries();
-    else \* RequestVoteRpc
-        RequestVotes();
+    elsif request.type = RequestVoteRequest then
+        RequestVote();
+    else:
+        skip;
     end if;
 end procedure;
 

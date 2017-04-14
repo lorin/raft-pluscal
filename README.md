@@ -1,6 +1,4 @@
-# Raft spec in PlusCal
-
-(In progress...)
+# Raft spec in PlusCal (work in progress)
 
 ## Introduction
 
