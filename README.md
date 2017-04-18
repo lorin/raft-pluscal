@@ -215,7 +215,7 @@ response events) to some history H' such that
 
 **L1**: *complete(H')* is equivalent to some legal sequential history S, and
 
-**L2**: `<_H \subseteq <_S`
+**L2**: <img src="https://latex.codecogs.com/gif.latex?<_H&space;\subseteq&space;<_S" title="H subseteq S" />
 
 where:
 
@@ -227,14 +227,13 @@ client receives a response from the object.
 *complete(H')* is the maximal subsequence of H consisting only of invocations
 and matching responses.
 
-`<_H` is an irreflexible partial order of operations in H in H:
+<img src="https://latex.codecogs.com/gif.latex?\inline&space;<_H" title="<_H" /> is an irreflexible partial order of operations in H. In particular,
 
-`e0 <_H e1` if res(e0) precedes inv(e1) in H, where res(e0) is the response
+<img src="https://latex.codecogs.com/gif.latex?\inline&space;e0&space;<_H&space;e1" title="e0 <_H e1" /> if res(e0) precedes inv(e1) in H, where res(e0) is the response
 associated with operation e0, and inv(e1) is the invocation of operation e1.
 
 [bailis-linearizability]: http://www.bailis.org/blog/linearizability-versus-serializability/
 [herlihy-linearizability]: http://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf
-<img src="http://www.sciweavers.org/tex2img.php?eq=%3C_H%20%5Csubseteq%20%3C_S&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0" align="center" border="0" alt="<_H \subseteq <_S" width="65" height="17" ></_H>
 
 ## Raft
 
