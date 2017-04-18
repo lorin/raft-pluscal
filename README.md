@@ -192,13 +192,13 @@ In the Error-Trace window on the right, the last line is `<Back to state 5>`.
 The model checker found a path where it could loop forever without the liveness
 proeprty being true.
 
-## Raft
-
-
 ## Linearizability
 
-Raft claims to implement a [linearizable][bailis-linearizability] store. From
-[Herlihy and Wing][herlihy-linearizability], who introduced linearizability:
+Raft claims to implement a [linearizable][bailis-linearizability] store. Before
+we get into the Raft implementation itself, let's make it clear what
+linearizability is.
+
+From [Herlihy and Wing][herlihy-linearizability], who introduced linearizability:
 
 > Linearizability provides the illusion that each operation applied by
 > concurrent processes takes effect instantaneously at some point between its
@@ -207,7 +207,35 @@ Raft claims to implement a [linearizable][bailis-linearizability] store. From
 > First, each operation should appear to “take effect” instantaneously, and
 > second, the order of nonconcurrent operations should be preserved.
 
+More formally, from the Hierlihy and Wing paper:
 
+
+A history H is *linearizable* if it can be extended (by appending zero or more
+response events) to some history H' such that
+
+**L1**: *complete(H')* is equivalent to some legal sequential history S, and
+
+**L2**: `<_H \subseteq <_S`
+
+where:
+
+A *history* is a finite sequence of operation *invocation* and *response*
+events. You can think of these events as being from a client's point of view: a
+client invokes an operation on an object, and, some time in the future, the
+client receives a response from the logic.
+
+*complete(H')* is the maximal subsequence of H consisting only of invocations
+    and matching responses
+
+`<_H` is an irreflexible partial order of operations in H in H:
+
+`e0 <_H e1` if res(e0) precedes inv(e1) in H, where res(e0) is the response
+associated with operation e0, and inv(e1) is the invocation of operation e1.
 
 [bailis-linearizability]: http://www.bailis.org/blog/linearizability-versus-serializability/
 [herlihy-linearizability]: http://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf
+<img src="http://www.sciweavers.org/tex2img.php?eq=%3C_H%20%5Csubseteq%20%3C_S&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=0" align="center" border="0" alt="<_H \subseteq <_S" width="65" height="17" ></_H>
+
+## Raft
+
+
