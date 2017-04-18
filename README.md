@@ -222,7 +222,7 @@ where:
 A *history* is a finite sequence of operation *invocation* and *response*
 events. You can think of these events as being from a client's point of view: a
 client invokes an operation on an object, and, some time in the future, the
-client receives a response from the logic.
+client receives a response from the object.
 
 *complete(H')* is the maximal subsequence of H consisting only of invocations
     and matching responses
