@@ -225,7 +225,7 @@ client invokes an operation on an object, and, some time in the future, the
 client receives a response from the object.
 
 *complete(H')* is the maximal subsequence of H consisting only of invocations
-    and matching responses
+and matching responses.
 
 `<_H` is an irreflexible partial order of operations in H in H:
 
