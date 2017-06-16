@@ -7,11 +7,26 @@ CONSTANT Objects
 CONSTANT Processes
 CONSTANTS Inv, Res
 
-VARIABLE h
-
 
 \* Allowed operations
 Ops == [Process: Processes, Action: {Inv, Res}, Object: Objects]
+
+(*
+--algorithm MultipleAccessors
+
+variable h = <<>>;
+
+process (Proc \in Processes)
+variable obj \in Objects;
+begin
+    c1: h := Append(h, [Process|->self, Action|->Inv, Object|->obj])
+    c2: h := Append(h, [Process|->self, Action|->Res, Object|->obj])
+end process;
+
+end algorithm
+
+*)
+
 
 \* All possible histories up to length MaxLen
 Histories == UNION {[1..n -> Ops] : n \in 1..MaxLen}
