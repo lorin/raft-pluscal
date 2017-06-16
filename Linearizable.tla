@@ -52,7 +52,7 @@ AllInvocationsHaveMatchingResponses(H) ==
                                 /\ H[j].object = H[i].object
                                 /\ H[j].process = H[i].process
 
-Subsequences(H) == {SubSeq(H, 1, n) : n \in 1..Len(H)}
+Subsequences(H) == {SubSeq(H, 1, n) : n \in 0..Len(H)}
 
 Complete(H) == CHOOSE h \in Subsequences(H) :
     /\ AllInvocationsHaveMatchingResponses(h) 
@@ -118,7 +118,7 @@ AllInvocationsHaveMatchingResponses(H) ==
                                 /\ H[j].object = H[i].object
                                 /\ H[j].process = H[i].process
 
-Subsequences(H) == {SubSeq(H, 1, n) : n \in 1..Len(H)}
+Subsequences(H) == {SubSeq(H, 1, n) : n \in 0..Len(H)}
 
 Complete(H) == CHOOSE h \in Subsequences(H) :
     /\ AllInvocationsHaveMatchingResponses(h)
@@ -172,5 +172,5 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jun 15 22:59:08 PDT 2017 by lhochstein
+\* Last modified Thu Jun 15 23:11:01 PDT 2017 by lhochstein
 \* Created Thu Jun 15 19:06:06 PDT 2017 by lhochstein
