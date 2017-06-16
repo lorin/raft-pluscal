@@ -18,7 +18,7 @@ variable history = << >>;
 
 define 
 \* All possible histories up to length MaxLen
-Histories == UNION {[1..n -> Ops] : n \in 1..MaxLen}
+Histories == UNION {[1..n -> Ops] : n \in 0..MaxLen} 
 
 IsAnExtensionOf(Hp, H) == LET N==Len(H) IN
                             /\ Len(Hp) \geq N
@@ -84,7 +84,7 @@ end algorithm
 VARIABLES history, pc
 
 (* define statement *)
-Histories == UNION {[1..n -> Ops] : n \in 1..MaxLen}
+Histories == UNION {[1..n -> Ops] : n \in 0..MaxLen}
 
 IsAnExtensionOf(Hp, H) == LET N==Len(H) IN
                             /\ Len(Hp) \geq N
@@ -100,24 +100,23 @@ IsAnExtensionOf(Hp, H) == LET N==Len(H) IN
 
 IsSequentialHistory(H) ==
 \/ H = << >>
-\/  /\ PrintT(H) /\ H[1][Action] = Inv
+\/  /\ PrintT(H) /\ H[1].action = Inv
     /\ \A i \in 1..Len(H) :
-        /\ (H[i][Action] = Inv) =>  \/  /\ H[i+1][Action] = Res
-                                        /\ H[i+1][Process] = H[i][Process]
-                                        /\ H[i+1][Object] = H[i][Object]
+        /\ (H[i].action = Inv) =>  \/  /\ H[i+1].action = Res
+                                        /\ H[i+1].process = H[i].process
+                                        /\ H[i+1].object = H[i].object
                                     \/ i = Len(H)
-        /\ (H[i][Action] = Res) =>  /\ H[i-1][Action] = Inv
-                                    /\ H[i-1][Process] = H[i][Process]
-                                    /\ H[i-1][Object] = H[i][Object]
+        /\ (H[i].action = Res) =>  /\ H[i-1].action = Inv
+                                    /\ H[i-1].process = H[i].process
+                                    /\ H[i-1].object = H[i].object
 
 AreEquivalent(H, J) == H = J
 
 AllInvocationsHaveMatchingResponses(H) ==
-    \A i \in 1..Len(H) : (H[i][Action] = Inv) =>
-        \E j \in 1+1..Len(H) :  /\ H[j][Action] = Res
-                                /\ H[j][Object] = H[i][Object]
-                                /\ H[j][Process] = H[i][Process]
-
+    \A i \in 1..Len(H) : (H[i].action = Inv) =>
+        \E j \in 1+1..Len(H) :  /\ H[j].action = Res
+                                /\ H[j].object = H[i].object
+                                /\ H[j].process = H[i].process
 
 Subsequences(H) == {SubSeq(H, 1, n) : n \in 1..Len(H)}
 
@@ -148,12 +147,12 @@ Init == (* Global variables *)
         /\ pc = [self \in ProcSet |-> "c1"]
 
 c1(self) == /\ pc[self] = "c1"
-            /\ history' = Append(history, [Process|->self, Action|->Inv, Object|->obj[self]])
+            /\ history' = Append(history, [process|->self, action|->Inv, object|->obj[self]])
             /\ pc' = [pc EXCEPT ![self] = "c2"]
             /\ obj' = obj
 
 c2(self) == /\ pc[self] = "c2"
-            /\ history' = Append(history, [Process|->self, Action|->Res, Object|->obj[self]])
+            /\ history' = Append(history, [process|->self, action|->Res, object|->obj[self]])
             /\ pc' = [pc EXCEPT ![self] = "Done"]
             /\ obj' = obj
 
@@ -173,5 +172,5 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jun 15 22:33:10 PDT 2017 by lhochstein
+\* Last modified Thu Jun 15 22:59:08 PDT 2017 by lhochstein
 \* Created Thu Jun 15 19:06:06 PDT 2017 by lhochstein
