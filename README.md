@@ -9,7 +9,7 @@ PlusCal and to see if I could write a more readable spec than the original,
 which I find difficult to follow.
 
 I'm going to draw heavily on the memory interface examples from Leslie Lamport's
-[Specifying systems][book] book, so you'll see similarities in some of the specs
+[Specifying Systems][book] book, so you'll see similarities in some of the specs
 here to those examples.
 
 [raft-website]: https://raft.github.io/
