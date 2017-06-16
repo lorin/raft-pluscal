@@ -12,7 +12,7 @@ CONSTANTS Inv, Res
 Ops == [Process: Processes, Action: {Inv, Res}, Object: Objects]
 
 (*
---algorithm MultipleAccessors
+--algorithm MultipleWriters
 
 variable h = <<>>;
 
@@ -20,20 +20,50 @@ define
 \* All possible histories up to length MaxLen
 Histories == UNION {[1..n -> Ops] : n \in 1..MaxLen}
 
-IsAnExtensionOf(Hp, H) == FALSE
+IsAnExtensionOf(Hp, H) == LET N=Len(H) IN
+                            /\ Len(Hp) \geq N
+                            /\ SubSeq(Hp, 1, N) = H
+                            /\ \A i \in Len(H)+1..Len(Hp) : Hp[i] \in Ops
 
-IsLegalSequentialHistory(H) == FALSE
+\* A history H is sequential if:
+\* 
+\* 1. The first event of H is an invocation.
+\* 2.  Each invocation, except possibly the last, is immediately followed by
+\* a matching response. Each response is immediately preceded by a matching
+\* invocation.
 
-AreEquivalent(H, J) == FALSE
+IsSequentialHistory(H) == 
+    /\ H[1][Action] == Inv
+    /\ \A i \in 1..Len(H) : 
+        /\ (H[i][Action] = Inv) =>  \/  /\ H[i+1][Action] = Res
+                                        /\ H[i+1][Process] = H[i][Process]
+                                        /\ H[i+1][Object] = H[i][Object]
+                                    \/ i = Len(H)
+        /\ (H[i][Action] = Res) =>  /\ H[i-1][Action] = Inv
+                                    /\ H[i-1][Process] = H[i][Process]
+                                    /\ H[i-1][Object] = H[i][Object]
 
-Complete(H) == <<>>
+AreEquivalent(H, J) == H = J
+
+AllInvocationsHaveMatchingResponses(H) ==
+    \A i \in 1..Len(H) : (H[i][Action] = Inv) =>
+        \E j \in 1+1..Len(H) :  /\ H[j][Action] = Res
+                                /\ H[j][Object] = H[i][Object]
+                                /\ H[j][Process] = H[i][Process]
+        
+
+Subsequences(H) = {SubSeq(H, 1, n) : n \in 1..Len(H)}
+
+Complete(H) == CHOOSE h \in Subsequences(H) :
+    /\ AllInvocationsHaveMatchingResponses(h) 
+    /\ \A j \in Subsequences(H) : AllInvocationsHaveMatchingResponses(j) => Len(h) /geq Len(j)
 
 Ordering(H) == {}
 
 IsLinearizable(H) == 
     \E Hp, S \in Histories :  
         /\ IsAnExtensionOf(Hp, H)
-        /\ IsLegalSequentialHistory(S)
+        /\ IsSequentialHistory(S)
         /\ AreEquivalent(Complete(Hp), S)
         /\ Ordering(H) \subseteq Ordering(S)
 
