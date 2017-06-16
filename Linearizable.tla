@@ -34,7 +34,7 @@ IsAnExtensionOf(Hp, H) == LET N==Len(H) IN
 
 IsSequentialHistory(H) ==
 \/ H = << >> 
-\/  /\ PrintT(H) /\ H[1].action = Inv
+\/  /\ H[1].action = Inv
     /\ \A i \in 1..Len(H) : 
         /\ (H[i].action = Inv) =>  \/  /\ H[i+1].action = Res
                                         /\ H[i+1].process = H[i].process
@@ -100,7 +100,7 @@ IsAnExtensionOf(Hp, H) == LET N==Len(H) IN
 
 IsSequentialHistory(H) ==
 \/ H = << >>
-\/  /\ PrintT(H) /\ H[1].action = Inv
+\/  /\ H[1].action = Inv
     /\ \A i \in 1..Len(H) :
         /\ (H[i].action = Inv) =>  \/  /\ H[i+1].action = Res
                                         /\ H[i+1].process = H[i].process
@@ -172,5 +172,5 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jun 15 23:11:01 PDT 2017 by lhochstein
+\* Last modified Thu Jun 15 23:25:30 PDT 2017 by lhochstein
 \* Created Thu Jun 15 19:06:06 PDT 2017 by lhochstein

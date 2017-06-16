@@ -224,13 +224,22 @@ events. You can think of these events as being from a client's point of view: a
 client invokes an operation on an object, and, some time in the future, the
 client receives a response from the object.
 
-*complete(H')* is the maximal subsequence of H consisting only of invocations
+*complete(H)* is the maximal subsequence of H consisting only of invocations
 and matching responses.
 
-<img src="https://latex.codecogs.com/gif.latex?\inline&space;<_H" title="<_H" /> is an irreflexible partial order of operations in H. In particular,
-
+<img src="https://latex.codecogs.com/gif.latex?\inline&space;<_H" title="<_H" /> is an irreflexive partial order of operations in H. In particular,
 <img src="https://latex.codecogs.com/gif.latex?\inline&space;e0&space;<_H&space;e1" title="e0 <_H e1" /> if res(e0) precedes inv(e1) in H, where res(e0) is the response
 associated with operation e0, and inv(e1) is the invocation of operation e1.
+
+A history H is sequential if:
+
+1. The first event of H is an invocation.
+2.  Each invocation, except possibly the last, is immediately followed by
+a matching response. Each response is immediately preceded by a matching
+invocation.
+
+Let's define a PlusCal operator that returns true if a history is
+lineralizable.
 
 [bailis-linearizability]: http://www.bailis.org/blog/linearizability-versus-serializability/
 [herlihy-linearizability]: http://cs.brown.edu/~mph/HerlihyW90/p463-herlihy.pdf
