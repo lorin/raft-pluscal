@@ -37,14 +37,14 @@ IsLinearizable(H) ==
         /\ AreEquivalent(Complete(Hp), S)
         /\ Ordering(H) \subseteq Ordering(S)
 
-end define;
+end define
 
 process Proc \in Processes
 variable obj \in Objects;
 begin
     c1: h := Append(h, [Process|->self, Action|->Inv, Object|->obj]);
     c2: h := Append(h, [Process|->self, Action|->Res, Object|->obj]);
-end process;
+end process
 
 end algorithm
 
@@ -110,5 +110,5 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jun 15 21:18:18 PDT 2017 by lhochstein
+\* Last modified Thu Jun 15 21:18:57 PDT 2017 by lhochstein
 \* Created Thu Jun 15 19:06:06 PDT 2017 by lhochstein
