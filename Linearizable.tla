@@ -1,6 +1,6 @@
 ---------------------------- MODULE Linearizable ----------------------------
 
-EXTENDS Naturals, Sequences
+EXTENDS Naturals, Sequences, TLC
 
 CONSTANT MaxLen
 CONSTANT Objects
@@ -9,18 +9,18 @@ CONSTANTS Inv, Res
 
 
 \* Allowed operations
-Ops == [Process: Processes, Action: {Inv, Res}, Object: Objects]
+Ops == [process: Processes, action: {Inv, Res}, object: Objects]
 
 (*
 --algorithm MultipleWriters
 
-variable h = <<>>;
+variable history = << >>;
 
 define 
 \* All possible histories up to length MaxLen
 Histories == UNION {[1..n -> Ops] : n \in 1..MaxLen}
 
-IsAnExtensionOf(Hp, H) == LET N=Len(H) IN
+IsAnExtensionOf(Hp, H) == LET N==Len(H) IN
                             /\ Len(Hp) \geq N
                             /\ SubSeq(Hp, 1, N) = H
                             /\ \A i \in Len(H)+1..Len(Hp) : Hp[i] \in Ops
@@ -32,9 +32,76 @@ IsAnExtensionOf(Hp, H) == LET N=Len(H) IN
 \* a matching response. Each response is immediately preceded by a matching
 \* invocation.
 
-IsSequentialHistory(H) == 
-    /\ H[1][Action] == Inv
+IsSequentialHistory(H) ==
+\/ H = << >> 
+\/  /\ PrintT(H) /\ H[1].action = Inv
     /\ \A i \in 1..Len(H) : 
+        /\ (H[i].action = Inv) =>  \/  /\ H[i+1].action = Res
+                                        /\ H[i+1].process = H[i].process
+                                        /\ H[i+1].object = H[i].object
+                                    \/ i = Len(H)
+        /\ (H[i].action = Res) =>  /\ H[i-1].action = Inv
+                                    /\ H[i-1].process = H[i].process
+                                    /\ H[i-1].object = H[i].object
+
+AreEquivalent(H, J) == H = J
+
+AllInvocationsHaveMatchingResponses(H) ==
+    \A i \in 1..Len(H) : (H[i].action = Inv) =>
+        \E j \in 1+1..Len(H) :  /\ H[j].action = Res
+                                /\ H[j].object = H[i].object
+                                /\ H[j].process = H[i].process
+
+Subsequences(H) == {SubSeq(H, 1, n) : n \in 1..Len(H)}
+
+Complete(H) == CHOOSE h \in Subsequences(H) :
+    /\ AllInvocationsHaveMatchingResponses(h) 
+    /\ \A j \in Subsequences(H) : AllInvocationsHaveMatchingResponses(j) => Len(h) \geq Len(j)
+
+Ordering(H) == {}
+
+IsLinearizable(H) == 
+\/  H = << >>
+\/  \E Hp, S \in Histories :  
+      /\ IsAnExtensionOf(Hp, H)
+      /\ IsSequentialHistory(S)
+      /\ AreEquivalent(Complete(Hp), S)
+      /\ Ordering(H) \subseteq Ordering(S)
+
+end define
+
+process Proc \in Processes
+variable obj \in Objects;
+begin
+    c1: history := Append(history, [process|->self, action|->Inv, object|->obj]);
+    c2: history := Append(history, [process|->self, action|->Res, object|->obj]);
+end process
+
+end algorithm
+
+*)
+\* BEGIN TRANSLATION
+VARIABLES history, pc
+
+(* define statement *)
+Histories == UNION {[1..n -> Ops] : n \in 1..MaxLen}
+
+IsAnExtensionOf(Hp, H) == LET N==Len(H) IN
+                            /\ Len(Hp) \geq N
+                            /\ SubSeq(Hp, 1, N) = H
+                            /\ \A i \in Len(H)+1..Len(Hp) : Hp[i] \in Ops
+
+
+
+
+
+
+
+
+IsSequentialHistory(H) ==
+\/ H = << >>
+\/  /\ PrintT(H) /\ H[1][Action] = Inv
+    /\ \A i \in 1..Len(H) :
         /\ (H[i][Action] = Inv) =>  \/  /\ H[i+1][Action] = Res
                                         /\ H[i+1][Process] = H[i][Process]
                                         /\ H[i+1][Object] = H[i][Object]
@@ -50,77 +117,43 @@ AllInvocationsHaveMatchingResponses(H) ==
         \E j \in 1+1..Len(H) :  /\ H[j][Action] = Res
                                 /\ H[j][Object] = H[i][Object]
                                 /\ H[j][Process] = H[i][Process]
-        
 
-Subsequences(H) = {SubSeq(H, 1, n) : n \in 1..Len(H)}
+
+Subsequences(H) == {SubSeq(H, 1, n) : n \in 1..Len(H)}
 
 Complete(H) == CHOOSE h \in Subsequences(H) :
-    /\ AllInvocationsHaveMatchingResponses(h) 
-    /\ \A j \in Subsequences(H) : AllInvocationsHaveMatchingResponses(j) => Len(h) /geq Len(j)
-
-Ordering(H) == {}
-
-IsLinearizable(H) == 
-    \E Hp, S \in Histories :  
-        /\ IsAnExtensionOf(Hp, H)
-        /\ IsSequentialHistory(S)
-        /\ AreEquivalent(Complete(Hp), S)
-        /\ Ordering(H) \subseteq Ordering(S)
-
-end define
-
-process Proc \in Processes
-variable obj \in Objects;
-begin
-    c1: h := Append(h, [Process|->self, Action|->Inv, Object|->obj]);
-    c2: h := Append(h, [Process|->self, Action|->Res, Object|->obj]);
-end process
-
-end algorithm
-
-*)
-\* BEGIN TRANSLATION
-VARIABLES h, pc
-
-(* define statement *)
-Histories == UNION {[1..n -> Ops] : n \in 1..MaxLen}
-
-IsAnExtensionOf(Hp, H) == FALSE
-
-IsLegalSequentialHistory(H) == FALSE
-
-AreEquivalent(H, J) == FALSE
-
-Complete(H) == <<>>
+    /\ AllInvocationsHaveMatchingResponses(h)
+    /\ \A j \in Subsequences(H) : AllInvocationsHaveMatchingResponses(j) => Len(h) \geq Len(j)
 
 Ordering(H) == {}
 
 IsLinearizable(H) ==
-    \E Hp, S \in Histories :
-        /\ IsAnExtensionOf(Hp, H)
-        /\ IsLegalSequentialHistory(S)
-        /\ AreEquivalent(Complete(Hp), S)
-        /\ Ordering(H) \subseteq Ordering(S)
+\/  H = << >>
+\/  \E Hp, S \in Histories :
+      /\ IsAnExtensionOf(Hp, H)
+      /\ IsSequentialHistory(S)
+      /\ AreEquivalent(Complete(Hp), S)
+      /\ Ordering(H) \subseteq Ordering(S)
 
 VARIABLE obj
 
-vars == << h, pc, obj >>
+vars == << history, pc, obj >>
 
 ProcSet == (Processes)
 
 Init == (* Global variables *)
-        /\ h = <<>>
+        /\ history = << >>
         (* Process Proc *)
         /\ obj \in [Processes -> Objects]
         /\ pc = [self \in ProcSet |-> "c1"]
 
 c1(self) == /\ pc[self] = "c1"
-            /\ h' = Append(h, [Process|->self, Action|->Inv, Object|->obj[self]])
+            /\ history' = Append(history, [Process|->self, Action|->Inv, Object|->obj[self]])
             /\ pc' = [pc EXCEPT ![self] = "c2"]
             /\ obj' = obj
 
 c2(self) == /\ pc[self] = "c2"
-            /\ h' = Append(h, [Process|->self, Action|->Res, Object|->obj[self]])
+            /\ history' = Append(history, [Process|->self, Action|->Res, Object|->obj[self]])
             /\ pc' = [pc EXCEPT ![self] = "Done"]
             /\ obj' = obj
 
@@ -140,5 +173,5 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jun 15 21:18:57 PDT 2017 by lhochstein
+\* Last modified Thu Jun 15 22:33:10 PDT 2017 by lhochstein
 \* Created Thu Jun 15 19:06:06 PDT 2017 by lhochstein
