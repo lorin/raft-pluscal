@@ -57,8 +57,12 @@ IsLegalHistory(H) ==
                                         /\ H[k].item /= H[i].item 
 
 
-\* Todo: fix this, it's not correct
-AreEquivalent(H, J) == H = J
+\* Two histories are equivalent if every op that appears in one
+\* history appears in the other
+AreEquivalent(H, J) == 
+    /\ Len(H) = Len(J)
+    /\ \A i \in 1..Len(H): \E j \in 1..Len(J): H[i] = J[j]
+    /\ \A i \in 1..Len(J): \E j \in 1..Len(H): J[i] = H[j]
 
 AllInvocationsHaveMatchingResponses(H) ==
     \A i \in 1..Len(H) : (H[i].side = Inv) =>
@@ -136,7 +140,11 @@ IsLegalHistory(H) ==
 
 
 
-AreEquivalent(H, J) == H = J
+
+AreEquivalent(H, J) ==
+    /\ Len(H) = Len(J)
+    /\ \A i \in 1..Len(H): \E j \in 1..Len(J): H[i] = J[j]
+    /\ \A i \in 1..Len(J): \E j \in 1..Len(H): J[i] = H[j]
 
 AllInvocationsHaveMatchingResponses(H) ==
     \A i \in 1..Len(H) : (H[i].side = Inv) =>
