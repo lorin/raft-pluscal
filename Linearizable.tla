@@ -7,12 +7,11 @@ CONSTANT Processes
 CONSTANT Items
 CONSTANTS Inv, Res
 CONSTANT Enq, Deq
-CONSTANT NoVal
 
 
 
 \* Allowed operations
-Ops == [method: {Enq, Deq}, item: Items \union {NoVal}, process: Processes, side: {Inv, Res}]
+Ops == [method: {Enq, Deq}, item: Items, process: Processes, side: {Inv, Res}]
 
 (*
 --algorithm MultipleWriters
@@ -76,7 +75,16 @@ Complete(H) == CHOOSE h \in Subsequences(H) :
     /\ AllInvocationsHaveMatchingResponses(h) 
     /\ \A j \in Subsequences(H) : AllInvocationsHaveMatchingResponses(j) => Len(h) \geq Len(j)
 
-Ordering(H) == { }
+
+Identifier(Op) == << Op.method, Op.item, Op.process >>
+                
+Ordering(H) == { <<Identifier(H[x[1]]), Identifier(H[x[2]])>> : x \in
+    {p \in {<<i,j>> : i,j \in 1..Len(H)} :
+        LET i == p[1], j == p[2] IN /\ i<j
+                                    /\ H[i].side = Res
+                                    /\ H[j].side = Inv
+    }
+}
 
 IsLinearizable(H) == 
 \/  H = << >>
@@ -97,7 +105,7 @@ either
     e1: history := Append(history, [method|->Enq, item|->item, process|->self, side|->Inv]);
     e2: history := Append(history, [method|->Enq, item|->item, process|->self, side|->Res]);
 or
-    d1: history := Append(history, [method|->Deq, item|->NoVal, process|->self, side|->Inv]);
+    d1: history := Append(history, [method|->Deq, item|->item, process|->self, side|->Inv]);
     d2: history := Append(history, [method|->Deq, item|->item, process|->self, side|->Res]);
 end either;
 end process
