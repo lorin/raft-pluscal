@@ -8,17 +8,15 @@ CONSTANT Items
 CONSTANTS Inv, Res
 CONSTANT Enq, Deq
 
-
-
-\* Allowed operations
-Ops == [method: {Enq, Deq}, item: Items, process: Processes, side: {Inv, Res}]
-
 (*
 --algorithm MultipleWriters
 
 variable history = << >>;
 
 define 
+\* Allowed operations
+Ops == [method: {Enq, Deq}, item: Items, process: Processes, side: {Inv, Res}]
+
 \* All possible histories up to length MaxLen
 Histories == UNION {[1..n -> Ops] : n \in 0..MaxLen} 
 
@@ -45,16 +43,17 @@ IsSequentialHistory(H) ==
         /\ (H[i].side = Res) =>  /\ H[i-1].side = Inv
                                     /\ H[i-1].process = H[i].process
 
-\* Every dequeue must be matched by a corresponding enqueue
-\* This assumes sequential, so we don't care about the side of the operation
+\* A FIFO history is legal if deq order matches enq order
 IsLegalHistory(H) ==
     \A i \in 1..Len(H):
         H[i].method = Deq =>
             \E j \in 1..i-1: 
                 /\ H[j].method = Enq
                 /\ H[j].item = H[i].item
-                /\  ~\E k \in j+1..i-1 : /\ H[k].method = Enq
-                                         /\ H[k].item /= H[i].item 
+                /\  ~\E k \in j+1..i-1 : 
+                    \/  /\ H[k].method = Enq
+                        /\ H[k].item /= H[i].item 
+                    \/  /\ H[k].
 
 
 \* Two histories are equivalent if every op that appears in one
@@ -80,9 +79,10 @@ Identifier(Op) == << Op.method, Op.item, Op.process >>
                 
 Ordering(H) == { <<Identifier(H[x[1]]), Identifier(H[x[2]])>> : x \in
     {p \in {<<i,j>> : i,j \in 1..Len(H)} :
-        LET i == p[1], j == p[2] IN /\ i<j
-                                    /\ H[i].side = Res
-                                    /\ H[j].side = Inv
+        LET i == p[1]
+            j == p[2] IN /\ i<j
+                         /\ H[i].side = Res
+                         /\ H[j].side = Inv
     }
 }
 
@@ -117,6 +117,9 @@ end algorithm
 VARIABLES history, pc
 
 (* define statement *)
+Ops == [method: {Enq, Deq}, item: Items, process: Processes, side: {Inv, Res}]
+
+
 Histories == UNION {[1..n -> Ops] : n \in 0..MaxLen}
 
 IsAnExtensionOf(Hp, H) == LET N==Len(H) IN
@@ -177,9 +180,10 @@ Identifier(Op) == << Op.method, Op.item, Op.process >>
 
 Ordering(H) == { <<Identifier(H[x[1]]), Identifier(H[x[2]])>> : x \in
     {p \in {<<i,j>> : i,j \in 1..Len(H)} :
-        LET i == p[1], j == p[2] IN /\ i<j
-                                    /\ H[i].side = Res
-                                    /\ H[j].side = Inv
+        LET i == p[1]
+            j == p[2] IN /\ i<j
+                         /\ H[i].side = Res
+                         /\ H[j].side = Inv
     }
 }
 
