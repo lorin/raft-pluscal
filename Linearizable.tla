@@ -53,7 +53,7 @@ IsLegalHistory(H) ==
             \E j \in 1..i-1: 
                 /\ H[j].method = Enq
                 /\ H[j].item = H[i].item
-                /\  ~\E k in j+1..i-1 : /\ H[k].method = Enq
+                /\  ~\E k \in j+1..i-1 : /\ H[k].method = Enq
                                         /\ H[k].item /= H[i].item 
 
 
@@ -124,6 +124,18 @@ IsSequentialHistory(H) ==
                                     /\ H[i-1].process = H[i].process
 
 
+
+IsLegalHistory(H) ==
+    \A i \in 1..Len(H):
+        H[i].method = Deq =>
+            \E j \in 1..i-1:
+                /\ H[j].method = Enq
+                /\ H[j].item = H[i].item
+                /\  ~\E k \in j+1..i-1 : /\ H[k].method = Enq
+                                        /\ H[k].item /= H[i].item
+
+
+
 AreEquivalent(H, J) == H = J
 
 AllInvocationsHaveMatchingResponses(H) ==
@@ -144,6 +156,7 @@ IsLinearizable(H) ==
 \/  \E Hp, S \in Histories :
       /\ IsAnExtensionOf(Hp, H)
       /\ IsSequentialHistory(S)
+      /\ IsLegalHistory(S)
       /\ AreEquivalent(Complete(Hp), S)
       /\ Ordering(H) \subseteq Ordering(S)
 
