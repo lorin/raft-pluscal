@@ -93,11 +93,12 @@ process Proc \in Processes
 variable item \in Items;
 begin
 either
-    e1: history := Append(history, [method|->enq, item|->item, process|->self, side|->Inv]);
-    e2: history := Append(history, [method|->enq, item|->item, process|->self, side|->Res]);
+    e1: history := Append(history, [method|->Enq, item|->item, process|->self, side|->Inv]);
+    e2: history := Append(history, [method|->Enq, item|->item, process|->self, side|->Res]);
 or
-    d1: history := Append(history, [method|->deq, item|->NoVal, process|->self, side|->Inv]);
-    d2: history := Append(history, [method|->deq, item|->item, process|->self, side|->Res]);
+    d1: history := Append(history, [method|->Deq, item|->NoVal, process|->self, side|->Inv]);
+    d2: history := Append(history, [method|->Deq, item|->item, process|->self, side|->Res]);
+end either;
 end process
 
 end algorithm
@@ -141,7 +142,7 @@ IsLegalHistory(H) ==
                 /\ H[j].method = Enq
                 /\ H[j].item = H[i].item
                 /\  ~\E k \in j+1..i-1 : /\ H[k].method = Enq
-                                        /\ H[k].item /= H[i].item
+                                         /\ H[k].item /= H[i].item
 
 
 
@@ -162,7 +163,7 @@ Complete(H) == CHOOSE h \in Subsequences(H) :
     /\ AllInvocationsHaveMatchingResponses(h)
     /\ \A j \in Subsequences(H) : AllInvocationsHaveMatchingResponses(j) => Len(h) \geq Len(j)
 
-Ordering(H) == {}
+Ordering(H) == { }
 
 IsLinearizable(H) ==
 \/  H = << >>
@@ -183,19 +184,34 @@ Init == (* Global variables *)
         /\ history = << >>
         (* Process Proc *)
         /\ item \in [Processes -> Items]
-        /\ pc = [self \in ProcSet |-> "c1"]
+        /\ pc = [self \in ProcSet |-> "l0"]
 
-c1(self) == /\ pc[self] = "c1"
-            /\ history' = Append(history, [process|->self, side|->Inv, item|->item[self]])
-            /\ pc' = [pc EXCEPT ![self] = "c2"]
+l0(self) == /\ pc[self] = "l0"
+            /\ \/ /\ pc' = [pc EXCEPT ![self] = "e1"]
+               \/ /\ pc' = [pc EXCEPT ![self] = "d1"]
+            /\ UNCHANGED << history, item >>
+
+e1(self) == /\ pc[self] = "e1"
+            /\ history' = Append(history, [method|->enq, item|->item[self], process|->self, side|->Inv])
+            /\ pc' = [pc EXCEPT ![self] = "e2"]
             /\ item' = item
 
-c2(self) == /\ pc[self] = "c2"
-            /\ history' = Append(history, [process|->self, side|->Res, item|->item[self]])
+e2(self) == /\ pc[self] = "e2"
+            /\ history' = Append(history, [method|->enq, item|->item[self], process|->self, side|->Res])
             /\ pc' = [pc EXCEPT ![self] = "Done"]
             /\ item' = item
 
-Proc(self) == c1(self) \/ c2(self)
+d1(self) == /\ pc[self] = "d1"
+            /\ history' = Append(history, [method|->deq, item|->NoVal, process|->self, side|->Inv])
+            /\ pc' = [pc EXCEPT ![self] = "d2"]
+            /\ item' = item
+
+d2(self) == /\ pc[self] = "d2"
+            /\ history' = Append(history, [method|->deq, item|->item[self], process|->self, side|->Res])
+            /\ pc' = [pc EXCEPT ![self] = "Done"]
+            /\ item' = item
+
+Proc(self) == l0(self) \/ e1(self) \/ e2(self) \/ d1(self) \/ d2(self)
 
 Next == (\E self \in Processes: Proc(self))
            \/ (* Disjunct to prevent deadlock on termination *)
@@ -211,5 +227,5 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 =============================================================================
 \* Modification History
-\* Last modified Sat Jun 17 11:48:13 PDT 2017 by lhochstein
+\* Last modified Sat Jun 17 12:50:43 PDT 2017 by lhochstein
 \* Created Thu Jun 15 19:06:06 PDT 2017 by lhochstein
