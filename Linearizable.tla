@@ -36,10 +36,11 @@ IsSequentialHistory(H) ==
 \/ H = << >> 
 \/  /\ H[1].action = Inv
     /\ \A i \in 1..Len(H) : 
-        /\ (H[i].action = Inv) =>  \/  /\ H[i+1].action = Res
+        /\ (H[i].action = Inv) =>   \/ i = Len(H)
+                                    \/  /\ H[i+1].action = Res
                                         /\ H[i+1].process = H[i].process
                                         /\ H[i+1].object = H[i].object
-                                    \/ i = Len(H)
+                                   
         /\ (H[i].action = Res) =>  /\ H[i-1].action = Inv
                                     /\ H[i-1].process = H[i].process
                                     /\ H[i-1].object = H[i].object
@@ -102,10 +103,11 @@ IsSequentialHistory(H) ==
 \/ H = << >>
 \/  /\ H[1].action = Inv
     /\ \A i \in 1..Len(H) :
-        /\ (H[i].action = Inv) =>  \/  /\ H[i+1].action = Res
+        /\ (H[i].action = Inv) =>   \/ i = Len(H)
+                                    \/  /\ H[i+1].action = Res
                                         /\ H[i+1].process = H[i].process
                                         /\ H[i+1].object = H[i].object
-                                    \/ i = Len(H)
+
         /\ (H[i].action = Res) =>  /\ H[i-1].action = Inv
                                     /\ H[i-1].process = H[i].process
                                     /\ H[i-1].object = H[i].object
@@ -172,5 +174,5 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Jun 15 23:25:30 PDT 2017 by lhochstein
+\* Last modified Sat Jun 17 11:48:13 PDT 2017 by lhochstein
 \* Created Thu Jun 15 19:06:06 PDT 2017 by lhochstein
