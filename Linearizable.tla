@@ -172,7 +172,16 @@ Complete(H) == CHOOSE h \in Subsequences(H) :
     /\ AllInvocationsHaveMatchingResponses(h)
     /\ \A j \in Subsequences(H) : AllInvocationsHaveMatchingResponses(j) => Len(h) \geq Len(j)
 
-Ordering(H) == { }
+
+Identifier(Op) == << Op.method, Op.item, Op.process >>
+
+Ordering(H) == { <<Identifier(H[x[1]]), Identifier(H[x[2]])>> : x \in
+    {p \in {<<i,j>> : i,j \in 1..Len(H)} :
+        LET i == p[1], j == p[2] IN /\ i<j
+                                    /\ H[i].side = Res
+                                    /\ H[j].side = Inv
+    }
+}
 
 IsLinearizable(H) ==
 \/  H = << >>
@@ -211,7 +220,7 @@ e2(self) == /\ pc[self] = "e2"
             /\ item' = item
 
 d1(self) == /\ pc[self] = "d1"
-            /\ history' = Append(history, [method|->Deq, item|->NoVal, process|->self, side|->Inv])
+            /\ history' = Append(history, [method|->Deq, item|->item[self], process|->self, side|->Inv])
             /\ pc' = [pc EXCEPT ![self] = "d2"]
             /\ item' = item
 
