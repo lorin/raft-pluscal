@@ -7,11 +7,12 @@ CONSTANT Processes
 CONSTANT Items
 CONSTANTS Inv, Res
 CONSTANT Enq, Deq
+CONSTANT NoVal
 
 
 
 \* Allowed operations
-Ops == [method: {Enq, Deq}, item: Items, process: Processes, side: {Inv, Res}]
+Ops == [method: {Enq, Deq}, item: Items \union {NoVal}, process: Processes, side: {Inv, Res}]
 
 (*
 --algorithm MultipleWriters
@@ -54,7 +55,7 @@ IsLegalHistory(H) ==
                 /\ H[j].method = Enq
                 /\ H[j].item = H[i].item
                 /\  ~\E k \in j+1..i-1 : /\ H[k].method = Enq
-                                        /\ H[k].item /= H[i].item 
+                                         /\ H[k].item /= H[i].item 
 
 
 \* Two histories are equivalent if every op that appears in one
@@ -75,7 +76,7 @@ Complete(H) == CHOOSE h \in Subsequences(H) :
     /\ AllInvocationsHaveMatchingResponses(h) 
     /\ \A j \in Subsequences(H) : AllInvocationsHaveMatchingResponses(j) => Len(h) \geq Len(j)
 
-Ordering(H) == {}
+Ordering(H) == { }
 
 IsLinearizable(H) == 
 \/  H = << >>
@@ -91,8 +92,12 @@ end define
 process Proc \in Processes
 variable item \in Items;
 begin
-    c1: history := Append(history, [process|->self, side|->Inv, item|->item]);
-    c2: history := Append(history, [process|->self, side|->Res, item|->item]);
+either
+    e1: history := Append(history, [method|->enq, item|->item, process|->self, side|->Inv]);
+    e2: history := Append(history, [method|->enq, item|->item, process|->self, side|->Res]);
+or
+    d1: history := Append(history, [method|->deq, item|->NoVal, process|->self, side|->Inv]);
+    d2: history := Append(history, [method|->deq, item|->item, process|->self, side|->Res]);
 end process
 
 end algorithm
