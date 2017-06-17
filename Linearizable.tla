@@ -45,6 +45,18 @@ IsSequentialHistory(H) ==
         /\ (H[i].side = Res) =>  /\ H[i-1].side = Inv
                                     /\ H[i-1].process = H[i].process
 
+\* Every dequeue must be matched by a corresponding enqueue
+\* This assumes sequential, so we don't care about the side of the operation
+IsLegalHistory(H) ==
+    \A i \in 1..Len(H):
+        H[i].method = Deq =>
+            \E j \in 1..i-1: 
+                /\ H[j].method = Enq
+                /\ H[j].item = H[i].item
+                /\  ~\E k in j+1..i-1 : /\ H[k].method = Enq
+                                        /\ H[k].item /= H[i].item 
+
+
 \* Todo: fix this, it's not correct
 AreEquivalent(H, J) == H = J
 
@@ -66,6 +78,7 @@ IsLinearizable(H) ==
 \/  \E Hp, S \in Histories :  
       /\ IsAnExtensionOf(Hp, H)
       /\ IsSequentialHistory(S)
+      /\ IsLegalHistory(S)
       /\ AreEquivalent(Complete(Hp), S)
       /\ Ordering(H) \subseteq Ordering(S)
 
@@ -104,20 +117,18 @@ IsSequentialHistory(H) ==
 \/  /\ H[1].side = Inv
     /\ \A i \in 1..Len(H) :
         /\ (H[i].side = Inv) =>   \/ i = Len(H)
-                                    \/  /\ H[i+1].side = Res
-                                        /\ H[i+1].process = H[i].process
-                                        /\ H[i+1].object = H[i].object
+                                  \/  /\ H[i+1].side = Res
+                                      /\ H[i+1].process = H[i].process
 
         /\ (H[i].side = Res) =>  /\ H[i-1].side = Inv
                                     /\ H[i-1].process = H[i].process
-                                    /\ H[i-1].object = H[i].object
+
 
 AreEquivalent(H, J) == H = J
 
 AllInvocationsHaveMatchingResponses(H) ==
     \A i \in 1..Len(H) : (H[i].side = Inv) =>
         \E j \in 1+1..Len(H) :  /\ H[j].side = Res
-                                /\ H[j].object = H[i].object
                                 /\ H[j].process = H[i].process
 
 Subsequences(H) == {SubSeq(H, 1, n) : n \in 0..Len(H)}
@@ -136,27 +147,27 @@ IsLinearizable(H) ==
       /\ AreEquivalent(Complete(Hp), S)
       /\ Ordering(H) \subseteq Ordering(S)
 
-VARIABLE obj
+VARIABLE item
 
-vars == << history, pc, obj >>
+vars == << history, pc, item >>
 
 ProcSet == (Processes)
 
 Init == (* Global variables *)
         /\ history = << >>
         (* Process Proc *)
-        /\ obj \in [Processes -> Objects]
+        /\ item \in [Processes -> Items]
         /\ pc = [self \in ProcSet |-> "c1"]
 
 c1(self) == /\ pc[self] = "c1"
-            /\ history' = Append(history, [process|->self, side|->Inv, object|->obj[self]])
+            /\ history' = Append(history, [process|->self, side|->Inv, item|->item[self]])
             /\ pc' = [pc EXCEPT ![self] = "c2"]
-            /\ obj' = obj
+            /\ item' = item
 
 c2(self) == /\ pc[self] = "c2"
-            /\ history' = Append(history, [process|->self, side|->Res, object|->obj[self]])
+            /\ history' = Append(history, [process|->self, side|->Res, item|->item[self]])
             /\ pc' = [pc EXCEPT ![self] = "Done"]
-            /\ obj' = obj
+            /\ item' = item
 
 Proc(self) == c1(self) \/ c2(self)
 
