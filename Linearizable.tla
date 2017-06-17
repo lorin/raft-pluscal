@@ -3,7 +3,6 @@
 EXTENDS Naturals, Sequences, TLC
 
 CONSTANT MaxLen
-CONSTANT Objects
 CONSTANT Processes
 CONSTANT Items
 CONSTANTS Inv, Res
@@ -12,7 +11,7 @@ CONSTANT Enq, Deq
 
 
 \* Allowed operations
-Ops == [method: {Enq, Deq}, item: Items, process: Processes, side: {Inv, Res}, object: Objects]
+Ops == [method: {Enq, Deq}, item: Items, process: Processes, side: {Inv, Res}]
 
 (*
 --algorithm MultipleWriters
@@ -31,29 +30,27 @@ IsAnExtensionOf(Hp, H) == LET N==Len(H) IN
 \* A history H is sequential if:
 \* 
 \* 1. The first event of H is an invocation.
-\* 2.  Each invocation, except possibly the last, is immediately followed by
-\* a matching response. Each response is immediately preceded by a matching
-\* invocation.
+\* 2. Each invocation, except possibly the last, is immediately followed by
+\*    a matching response. Each response is immediately preceded by a matching
+\*    invocation.
 
 IsSequentialHistory(H) ==
 \/ H = << >> 
 \/  /\ H[1].side = Inv
     /\ \A i \in 1..Len(H) : 
         /\ (H[i].side = Inv) =>   \/ i = Len(H)
-                                    \/  /\ H[i+1].side = Res
-                                        /\ H[i+1].process = H[i].process
-                                        /\ H[i+1].object = H[i].object
+                                  \/  /\ H[i+1].side = Res
+                                      /\ H[i+1].process = H[i].process
                                    
         /\ (H[i].side = Res) =>  /\ H[i-1].side = Inv
                                     /\ H[i-1].process = H[i].process
-                                    /\ H[i-1].object = H[i].object
 
+\* Todo: fix this, it's not correct
 AreEquivalent(H, J) == H = J
 
 AllInvocationsHaveMatchingResponses(H) ==
     \A i \in 1..Len(H) : (H[i].side = Inv) =>
         \E j \in 1+1..Len(H) :  /\ H[j].side = Res
-                                /\ H[j].object = H[i].object
                                 /\ H[j].process = H[i].process
 
 Subsequences(H) == {SubSeq(H, 1, n) : n \in 0..Len(H)}
@@ -75,10 +72,10 @@ IsLinearizable(H) ==
 end define
 
 process Proc \in Processes
-variable obj \in Objects;
+variable item \in Items;
 begin
-    c1: history := Append(history, [process|->self, side|->Inv, object|->obj]);
-    c2: history := Append(history, [process|->self, side|->Res, object|->obj]);
+    c1: history := Append(history, [process|->self, side|->Inv, item|->item]);
+    c2: history := Append(history, [process|->self, side|->Res, item|->item]);
 end process
 
 end algorithm
