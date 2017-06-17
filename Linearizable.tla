@@ -43,17 +43,8 @@ IsSequentialHistory(H) ==
         /\ (H[i].side = Res) =>  /\ H[i-1].side = Inv
                                     /\ H[i-1].process = H[i].process
 
-\* A FIFO history is legal if deq order matches enq order
-IsLegalHistory(H) ==
-    \A i \in 1..Len(H):
-        H[i].method = Deq =>
-            \E j \in 1..i-1: 
-                /\ H[j].method = Enq
-                /\ H[j].item = H[i].item
-                /\  ~\E k \in j+1..i-1 : 
-                    \/  /\ H[k].method = Enq
-                        /\ H[k].item /= H[i].item 
-                    \/  /\ H[k].
+\* True if H is a legal FIFO history
+IsLegalHistory(H) == FALSE \* TBD
 
 
 \* Two histories are equivalent if every op that appears in one
